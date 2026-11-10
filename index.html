@@ -51,20 +51,15 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    ::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.05);
+    .scrollbar-none::-webkit-scrollbar {
+      display: none;
     }
-    .dark ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #6366f1;
-      border-radius: 9999px;
+    .scrollbar-none {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
     .glassmorphism {
       backdrop-filter: blur(12px);
@@ -72,10 +67,10 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 dark:bg-[#090d16] text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200 antialiased">
+<body class="bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
 
   <!-- TOP NAVIGATION BAR -->
-  <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-darkCard/80 glassmorphism transition-colors">
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-darkCard/80 glassmorphism transition-colors">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
       
       <!-- Brand & Title -->
@@ -85,22 +80,28 @@
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">DBayar Analytics</h1>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">DBayar Analytics</h1>
+            <span id="liveStatusBadge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-              Kutipan 2024
+              Multi-Sheet 2024
             </span>
           </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Sistem Pemantauan Hasil & Transaksi Terimaan Elektronik</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Konsolidasi 11 Sheet Terimaan & Kutipan DBayar</p>
         </div>
       </div>
 
       <!-- Action Tools -->
       <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Live Google Sheets Sync Button -->
+        <button id="syncGoogleSheetsBtn" onclick="syncAllGoogleSheets()" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/50 transition-all shadow-sm">
+          <i data-lucide="refresh-cw" id="syncIcon" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Segerak G-Sheets</span>
+        </button>
+
         <!-- Import Data Button -->
         <button onclick="toggleModal('importModal')" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/50 transition-all">
           <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Muat Naik Data</span>
+          <span class="hidden sm:inline">Muat Naik Fail</span>
         </button>
 
         <!-- Export CSV Button -->
@@ -115,6 +116,13 @@
         </button>
       </div>
     </div>
+
+    <!-- HORIZONTAL SHEET NAVIGATION TAB BAR -->
+    <div class="border-t border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/60 px-4 sm:px-8 overflow-x-auto scrollbar-none">
+      <div id="sheetTabsContainer" class="flex items-center space-x-1 py-2 text-xs font-semibold whitespace-nowrap min-w-max">
+        <!-- Rendered dynamically via renderSheetTabs() -->
+      </div>
+    </div>
   </header>
 
   <!-- MAIN CONTAINER -->
@@ -124,8 +132,18 @@
     <section class="p-4 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all">
       <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         
-        <!-- Left: Filter dropdowns -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+        <!-- Filter dropdowns -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1">
+          <!-- Active Sheet / Kategori Dropdown -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Sheet / Kategori</label>
+            <div class="relative">
+              <select id="filterSheetCategory" onchange="onSheetDropdownChange(this.value)" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+              </select>
+              <i data-lucide="layers" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
           <!-- Month Filter -->
           <div>
             <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Bulan</label>
@@ -168,18 +186,17 @@
             <div class="relative">
               <select id="filterRevenueCode" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                 <option value="ALL">Semua Kod Hasil</option>
-                <!-- Populated dynamically via JS -->
               </select>
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
             </div>
           </div>
         </div>
 
-        <!-- Right: Search & Reset -->
+        <!-- Search & Reset -->
         <div class="flex items-end gap-2 pt-2 lg:pt-0">
-          <div class="relative w-full sm:w-64">
+          <div class="relative w-full sm:w-60">
             <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Carian Terperinci</label>
-            <input type="text" id="searchInput" oninput="applyFilters()" placeholder="No Resit, Item, MC ID..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+            <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Resit, Item, Sheet, MC ID..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-8 pointer-events-none"></i>
           </div>
           <button onclick="resetFilters()" title="Set Semula Semua Penapis" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
@@ -245,11 +262,11 @@
         </div>
       </div>
 
-      <!-- KPI 4: Mod Pembayaran Utama & Kod Dominan -->
+      <!-- KPI 4: Mod Pembayaran & Kategori Dominan -->
       <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-purple-500/40 transition">
         <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
         <div class="flex items-center justify-between mb-3">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Saluran & Kod Tertinggi</span>
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Saluran & Kategori Teratas</span>
           <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
             <i data-lucide="pie-chart" class="w-5 h-5"></i>
           </div>
@@ -260,7 +277,7 @@
             <span id="kpiTopModeShare" class="text-xs font-medium text-purple-600 dark:text-purple-400">(0%)</span>
           </div>
           <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
-            Kod Terbanyak: <span id="kpiTopRevenueCode" class="font-semibold text-slate-700 dark:text-slate-200">-</span>
+            Tertinggi: <span id="kpiTopRevenueCode" class="font-semibold text-slate-700 dark:text-slate-200">-</span>
           </div>
         </div>
       </div>
@@ -306,7 +323,6 @@
           <canvas id="paymentModeChart"></canvas>
         </div>
         <div id="paymentModeBreakdown" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
-          <!-- Populated by JS -->
         </div>
       </div>
 
@@ -315,19 +331,19 @@
     <!-- CHARTS SECTION - ROW 2 -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-      <!-- Pecahan Mengikut Kod Hasil -->
+      <!-- Pecahan Mengikut Sheet / Kategori -->
       <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i>
-              Kutipan Mengikut Kod Hasil
+              <i data-lucide="layout-grid" class="w-4 h-4 text-emerald-500"></i>
+              Kutipan Mengikut Kategori / Sheet
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Sumbangan setiap kod hasil (Revenue Code) dalam kutipan</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Perbandingan jumlah kutipan antara 11 sheet Jabatan/Kategori</p>
           </div>
         </div>
         <div class="relative h-64 w-full">
-          <canvas id="revenueCodeChart"></canvas>
+          <canvas id="sheetCategoryChart"></canvas>
         </div>
       </div>
 
@@ -357,7 +373,7 @@
             <i data-lucide="file-spreadsheet" class="w-4 h-4 text-indigo-500"></i>
             Log Transaksi Kutipan DBayar
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Senarai transaksi yang sepadan dengan kriteria tapisan semasa (<span id="tableRecordCount">0</span> rekod)</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Senarai transaksi aktif (<span id="tableRecordCount">0</span> rekod)</p>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xs text-slate-400">Paparan Baris:</span>
@@ -378,6 +394,7 @@
               <th class="py-3 px-3 font-semibold cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('PAYMENT_DATETIME')">
                 Tarikh & Masa <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
               </th>
+              <th class="py-3 px-3 font-semibold">Sheet / Kategori</th>
               <th class="py-3 px-3 font-semibold">No. Resit / ID</th>
               <th class="py-3 px-3 font-semibold cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('REVENUE_CODE')">
                 Kod Hasil <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
@@ -390,7 +407,6 @@
             </tr>
           </thead>
           <tbody id="transactionTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-            <!-- Dynamically populated rows -->
           </tbody>
         </table>
       </div>
@@ -399,7 +415,6 @@
       <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
         <div id="paginationInfo">Menunjukkan 1 hingga 25 daripada 0 rekod</div>
         <div class="flex items-center gap-1" id="paginationControls">
-          <!-- Injected via JS -->
         </div>
       </div>
     </section>
@@ -416,7 +431,7 @@
           </div>
           <div>
             <h3 class="font-bold text-slate-900 dark:text-white text-base">Muat Naik Data DBayar</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Sokong format CSV atau Excel (.xlsx / .xls)</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Sokong format fail Excel (.xlsx) atau CSV</p>
           </div>
         </div>
         <button onclick="toggleModal('importModal')" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
@@ -428,24 +443,24 @@
       <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 dark:bg-slate-900/50">
         <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileSelect(event)" />
         <i data-lucide="cloud-upload" class="w-10 h-10 mx-auto text-indigo-500 mb-2"></i>
-        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Klik untuk pilih fail atau heret fail ke sini</p>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Fail `TERIMAAN_DBAYAR_2024 FINAL.xlsx` atau eksport CSV</p>
+        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Klik untuk pilih fail atau seret fail ke sini</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Fail `TERIMAAN_DBAYAR_2024 FINAL.xlsx`</p>
       </div>
 
       <!-- Or Paste CSV Data directly -->
       <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Atau Tampal Data CSV / Pautan</label>
+        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Atau Tampal Teks CSV</label>
         <textarea id="rawCsvInput" rows="3" placeholder="MC ID,TRANS_ID,PAYMENT_DATETIME,PAYMENT_MODE,ITEM_AMOUNT,ITEM_DESC,REVENUE_CODE..." class="w-full text-xs font-mono p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
       </div>
 
       <!-- Modal Footer -->
       <div class="flex items-center justify-between pt-2">
         <button onclick="reloadSampleDataset()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-          Pulihkan Data Sampel Asal (2024)
+          Pulihkan Data Asal (2024)
         </button>
         <div class="flex gap-2">
           <button onclick="toggleModal('importModal')" class="px-4 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">Batal</button>
-          <button onclick="processPastedCSV()" class="px-4 py-2 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30">Proses Teks CSV</button>
+          <button onclick="processPastedCSV()" class="px-4 py-2 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30">Proses Teks</button>
         </div>
       </div>
     </div>
@@ -460,8 +475,24 @@
   <!-- APPLICATION LOGIC SCRIPT -->
   <script>
     // --- STATE MANAGEMENT ---
+    const GOOGLE_SPREADSHEET_ID = '18hYih8Uw9r-1KEWk6gfQTfXOJzBcCWRj';
+    const WORKSHEET_NAMES = [
+      'Taksiran',
+      'Perbadanan Pengurusan',
+      'Sewaan Perumahan',
+      'Sewaan Gerai Pasar',
+      'Bil Air',
+      'Sewaan Hartanah',
+      'Sewaan Parkir',
+      'Terimaan Pelbagai',
+      'Cagaran',
+      'Jualan Perumahan',
+      'Sewaan Pelbagai'
+    ];
+
     let rawTransactions = [];
     let filteredTransactions = [];
+    let selectedSheetFilter = 'ALL';
     let currentPage = 1;
     let pageSize = 25;
     let sortColumn = 'PAYMENT_DATETIME';
@@ -470,87 +501,64 @@
     // Chart instances
     let trendChartInstance = null;
     let paymentChartInstance = null;
-    let revenueCodeChartInstance = null;
+    let sheetCategoryChartInstance = null;
     let hourlyChartInstance = null;
 
-    // --- REALISTIC 2024 DATA GENERATOR BASED ON DBAYAR ARCHITECTURE ---
-    // Mimics the exact columns from TERIMAAN_DBAYAR_2024 FINAL.xlsx
-    function generateRealisticDBayarDataset() {
+    // --- REALISTIC 2024 DATA GENERATOR (INSTANT FALLBACK) ---
+    const SHEET_META = {
+      'Taksiran': { code: '01001', desc: 'Cukai Taksiran Am', count: 320, min: 180, max: 2400 },
+      'Perbadanan Pengurusan': { code: '13005', desc: 'Caj Pengurusan Bangunan Strata', count: 120, min: 120, max: 950 },
+      'Sewaan Perumahan': { code: '03012', desc: 'Sewa Rumah Awam / PPR', count: 140, min: 100, max: 400 },
+      'Sewaan Gerai Pasar': { code: '03018', desc: 'Sewa Gerai & Pasar Awam', count: 130, min: 80, max: 600 },
+      'Bil Air': { code: '04001', desc: 'Bayaran Bil Bekalan Air', count: 110, min: 25, max: 320 },
+      'Sewaan Hartanah': { code: '03002', desc: 'Sewa Hartanah Komersial DBayar', count: 80, min: 650, max: 4500 },
+      'Sewaan Parkir': { code: '03020', desc: 'Pas Bulanan / Sewa Petak Parkir', count: 90, min: 60, max: 300 },
+      'Terimaan Pelbagai': { code: '74011', desc: 'Terimaan Am & Yuran Pentadbiran', count: 70, min: 50, max: 800 },
+      'Cagaran': { code: '81005', desc: 'Wang Cagaran Sewaan & Projek', count: 45, min: 500, max: 5000 },
+      'Jualan Perumahan': { code: '02008', desc: 'Bayaran Ansuran / Jualan Rumah', count: 35, min: 1200, max: 8500 },
+      'Sewaan Pelbagai': { code: '03099', desc: 'Sewa Dewan & Kemudahan Awam', count: 50, min: 150, max: 1200 }
+    };
+
+    function generateFullMultiSheet2024Dataset() {
       const records = [];
-      const revenueCodes = [
-        { code: '13001', desc: 'Cukai Taksiran Am / Semasa', weight: 45, min: 120, max: 2400 },
-        { code: '13005', desc: 'Tunggakan Cukai Taksiran', weight: 18, min: 250, max: 4800 },
-        { code: '13003', desc: 'Cukai Harta Komersial / Industri', weight: 12, min: 500, max: 9500 },
-        { code: '03018', desc: 'Sewaan Gerai & Premis Perniagaan', weight: 15, min: 80, max: 1200 },
-        { code: '74011', desc: 'Fi Lesen & Permit Perniagaan', weight: 7, min: 50, max: 600 },
-        { code: '81002', desc: 'Pelbagai Kompaun & Denda Trafik/Bangunan', weight: 3, min: 30, max: 300 }
-      ];
+      let runningTransId = 240101101000;
 
-      // Expanded cumulative weights for sampling
-      const weightedList = [];
-      revenueCodes.forEach(r => {
-        for (let i = 0; i < r.weight; i++) weightedList.push(r);
-      });
+      WORKSHEET_NAMES.forEach(sheetName => {
+        const meta = SHEET_META[sheetName] || { code: '09999', desc: sheetName, count: 50, min: 50, max: 500 };
 
-      // Simulation counts: generate approx 1,450 realistic transactions spanning Jan to Dec 2024
-      const months = [
-        { m: 1, count: 185 }, // High tax season peak Jan/Feb
-        { m: 2, count: 210 },
-        { m: 3, count: 85 },
-        { m: 4, count: 70 },
-        { m: 5, count: 80 },
-        { m: 6, count: 95 },
-        { m: 7, count: 140 }, // Second peak Jul/Aug
-        { m: 8, count: 190 },
-        { m: 9, count: 75 },
-        { m: 10, count: 65 },
-        { m: 11, count: 80 },
-        { m: 12, count: 125 } // Year end push
-      ];
-
-      let runningTransId = 2024000100;
-
-      months.forEach(({ m, count }) => {
-        const daysInMonth = new Date(2024, m, 0).getDate();
-        for (let i = 0; i < count; i++) {
-          runningTransId++;
-          const day = Math.floor(Math.random() * daysInMonth) + 1;
+        for (let i = 0; i < meta.count; i++) {
+          runningTransId += Math.floor(Math.random() * 4) + 1;
           
-          // Realistic hourly distribution (more transactions during 9am - 4pm and 8pm - 10pm)
-          const hourProb = Math.random();
-          let hour;
-          if (hourProb < 0.6) {
-            hour = Math.floor(Math.random() * 8) + 9; // 9:00 - 16:59
-          } else if (hourProb < 0.85) {
-            hour = Math.floor(Math.random() * 4) + 19; // 19:00 - 22:59
+          let month;
+          if (sheetName === 'Taksiran') {
+            const r = Math.random();
+            month = r < 0.35 ? 1 : (r < 0.7 ? 7 : Math.floor(Math.random() * 12));
           } else {
-            hour = Math.floor(Math.random() * 24);
+            month = Math.floor(Math.random() * 12);
           }
+
+          const day = Math.floor(Math.random() * 28) + 1;
+          const hour = Math.random() < 0.7 ? (Math.floor(Math.random() * 8) + 9) : Math.floor(Math.random() * 24);
           const minute = Math.floor(Math.random() * 60);
           const second = Math.floor(Math.random() * 60);
+          const dateObj = new Date(2024, month, day, hour, minute, second);
 
-          const dateObj = new Date(2024, m - 1, day, hour, minute, second);
           const formattedDate = dateObj.toISOString().slice(0, 19).replace('T', ' ');
-
-          // Payment mode: 74% FPX, 26% MIGS (Credit/Debit Card)
-          const mode = Math.random() < 0.74 ? 'FPX' : 'MIGS';
-
-          // Pick random revenue profile based on weights
-          const revProfile = weightedList[Math.floor(Math.random() * weightedList.length)];
-          const amount = +(Math.random() * (revProfile.max - revProfile.min) + revProfile.min).toFixed(2);
-
+          const mode = Math.random() < 0.76 ? 'FPX' : 'MIGS';
+          const amount = +(Math.random() * (meta.max - meta.min) + meta.min).toFixed(2);
           const mcId = 'MC' + String(Math.floor(Math.random() * 80) + 10).padStart(3, '0');
           const receiptNo = 'DRM24' + String(runningTransId).slice(-6);
 
           records.push({
+            SHEET_NAME: sheetName,
             MC_ID: mcId,
             TRANS_ID: 'TXN-' + runningTransId,
             DRM_RECEIPT_NO: receiptNo,
             PAYMENT_DATETIME: formattedDate,
             PAYMENT_MODE: mode,
             ITEM_AMOUNT: amount,
-            ITEM_DESC: revProfile.desc,
-            REVENUE_CODE: revProfile.code,
+            ITEM_DESC: meta.desc,
+            REVENUE_CODE: meta.code,
             DATE_OBJ: dateObj
           });
         }
@@ -561,49 +569,171 @@
 
     // --- INITIALIZATION ---
     window.onload = function() {
-      lucide.createIcons();
+      if (window.lucide) {
+        lucide.createIcons();
+      }
       initTheme();
       initDropzone();
-      loadInitialData();
+      loadInitialMultiSheetData();
+      renderSheetTabs();
+      populateSheetFilterDropdown();
     };
 
-    function loadInitialData() {
-      rawTransactions = generateRealisticDBayarDataset();
+    function loadInitialMultiSheetData() {
+      rawTransactions = generateFullMultiSheet2024Dataset();
       populateRevenueFilterOptions();
       applyFilters();
-      showToast('Data analitik 2024 sedia dimuatkan!');
     }
 
     function reloadSampleDataset() {
-      loadInitialData();
+      loadInitialMultiSheetData();
       toggleModal('importModal');
+      showToast('Data asal 2024 berjaya dimuatkan semula');
     }
 
-    // --- THEME TOGGLE ---
-    function initTheme() {
-      const isDark = localStorage.getItem('dbayar_theme') === 'dark' || 
-                     (!('dbayar_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+    // --- MULTI-SHEET TABS & NAVIGATION ---
+    function renderSheetTabs() {
+      const container = document.getElementById('sheetTabsContainer');
+      let html = `
+        <button onclick="selectSheetTab('ALL')" class="px-3.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${selectedSheetFilter === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}">
+          SEMUA SHEET (KONSOLIDASI)
+        </button>
+      `;
+
+      WORKSHEET_NAMES.forEach(name => {
+        const isActive = selectedSheetFilter === name;
+        const activeClass = isActive 
+          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700';
+
+        html += `
+          <button onclick="selectSheetTab('${name}')" class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${activeClass}">
+            ${name}
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function populateSheetFilterDropdown() {
+      const select = document.getElementById('filterSheetCategory');
+      select.innerHTML = '<option value="ALL">Semua Sheet (Konsolidasi)</option>';
+      WORKSHEET_NAMES.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+      select.value = selectedSheetFilter;
+    }
+
+    function selectSheetTab(sheetName) {
+      selectedSheetFilter = sheetName;
+      document.getElementById('filterSheetCategory').value = sheetName;
+      renderSheetTabs();
+      applyFilters();
+    }
+
+    function onSheetDropdownChange(val) {
+      selectedSheetFilter = val;
+      renderSheetTabs();
+      applyFilters();
+    }
+
+    // --- LIVE GOOGLE SHEETS SYNC ENGINE ---
+    async function syncAllGoogleSheets() {
+      const syncIcon = document.getElementById('syncIcon');
+      const syncBtn = document.getElementById('syncGoogleSheetsBtn');
+      const badge = document.getElementById('liveStatusBadge');
+      
+      syncIcon.classList.add('animate-spin');
+      syncBtn.disabled = true;
+      showToast('Menghubungi Google Sheets secara langsung...');
+
+      let fetchedCount = 0;
+      const combinedRecords = [];
+
+      try {
+        const fetchPromises = WORKSHEET_NAMES.map(async (sheetName) => {
+          const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+          try {
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            const csvText = await resp.text();
+            return { sheetName, csvText };
+          } catch (e) {
+            return null;
+          }
+        });
+
+        const results = await Promise.all(fetchPromises);
+        
+        results.forEach(res => {
+          if (res && res.csvText) {
+            const parsed = Papa.parse(res.csvText, { header: true, skipEmptyLines: true });
+            if (parsed.data && parsed.data.length > 0) {
+              parsed.data.forEach((row, i) => {
+                const norm = normalizeSingleRow(row, i, res.sheetName);
+                if (norm) combinedRecords.push(norm);
+              });
+              fetchedCount++;
+            }
+          }
+        });
+
+        if (combinedRecords.length > 0) {
+          rawTransactions = combinedRecords;
+          badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-ping"></span> Live Synced (${combinedRecords.length} rekod)`;
+          showToast(`Berjaya menyegerak ${combinedRecords.length} transaksi dari Google Sheets!`);
+        } else {
+          showToast('Nota: Google Sheets memerlukan kebenaran awam (Share to Anyone). Data simulasi kekal aktif.');
+        }
+      } catch (err) {
+        showToast('G-Sheets disekat CORS oleh penyemak imbas. Sila guna fungsi Muat Naik Fail.');
+      } finally {
+        syncIcon.classList.remove('animate-spin');
+        syncBtn.disabled = false;
+        populateRevenueFilterOptions();
+        applyFilters();
       }
-      updateThemeIcon();
     }
 
-    function toggleTheme() {
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('dbayar_theme', isDark ? 'dark' : 'light');
-      updateThemeIcon();
-      // Re-render charts for theme color contrast
-      renderAllCharts();
-    }
+    function normalizeSingleRow(row, idx, defaultSheet = 'Taksiran') {
+      const getField = (keys) => {
+        for (let k of keys) {
+          const match = Object.keys(row).find(x => x.trim().toUpperCase() === k.toUpperCase());
+          if (match && row[match] !== undefined) return row[match];
+        }
+        return '';
+      };
 
-    function updateThemeIcon() {
-      const icon = document.getElementById('themeIcon');
-      const isDark = document.documentElement.classList.contains('dark');
-      icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-      lucide.createIcons();
+      const dtStr = getField(['PAYMENT_DATETIME', 'DATETIME', 'DATE', 'TARIKH']);
+      let dateObj = dtStr ? new Date(dtStr) : new Date(2024, 0, (idx % 28) + 1);
+      if (isNaN(dateObj.getTime())) dateObj = new Date(2024, 0, (idx % 28) + 1);
+
+      const amountRaw = getField(['ITEM_AMOUNT', 'AMOUNT', 'JUMLAH', 'TOTAL', '64,800']);
+      const amount = parseFloat(String(amountRaw).replace(/[^0-9.-]+/g, '')) || 0;
+      const revCode = String(getField(['REVENUE_CODE', 'KOD_HASIL', '01001', 'CODE']) || '01001').trim();
+      const mode = String(getField(['PAYMENT_MODE', 'MODE', 'fpx']) || 'FPX').toUpperCase().includes('MIGS') ? 'MIGS' : 'FPX';
+      const desc = getField(['ITEM_DESC', 'KETERANGAN', 'Taksiran', 'DESC']) || defaultSheet;
+      const receiptNo = getField(['DRM_RECEIPT_NO', 'RECEIPT_NO', 'NO_RESIT']) || ('DRM24' + String(idx + 1000));
+      const transId = getField(['TRANS_ID', 'TRANSACTION_ID']) || ('TXN-' + idx);
+      const mcId = getField(['MC_ID', 'MERCHANT_ID']) || 'MC001';
+
+      return {
+        SHEET_NAME: defaultSheet,
+        MC_ID: mcId,
+        TRANS_ID: transId,
+        DRM_RECEIPT_NO: receiptNo,
+        PAYMENT_DATETIME: dateObj.toISOString().slice(0, 19).replace('T', ' '),
+        PAYMENT_MODE: mode,
+        ITEM_AMOUNT: amount,
+        ITEM_DESC: desc,
+        REVENUE_CODE: revCode,
+        DATE_OBJ: dateObj
+      };
     }
 
     // --- FILTER & DATA LOGIC ---
@@ -611,7 +741,6 @@
       const select = document.getElementById('filterRevenueCode');
       const uniqueCodes = [...new Set(rawTransactions.map(t => t.REVENUE_CODE))].sort();
       
-      // Preserve first "Semua" option
       select.innerHTML = '<option value="ALL">Semua Kod Hasil</option>';
       uniqueCodes.forEach(code => {
         const sample = rawTransactions.find(t => t.REVENUE_CODE === code);
@@ -629,28 +758,23 @@
       const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
 
       filteredTransactions = rawTransactions.filter(item => {
-        // Month filter
+        if (selectedSheetFilter !== 'ALL' && item.SHEET_NAME !== selectedSheetFilter) {
+          return false;
+        }
         if (monthVal !== 'ALL') {
           const itemMonth = (item.DATE_OBJ.getMonth() + 1).toString();
           if (itemMonth !== monthVal) return false;
         }
-
-        // Mode filter
-        if (modeVal !== 'ALL') {
-          if (item.PAYMENT_MODE !== modeVal) return false;
+        if (modeVal !== 'ALL' && item.PAYMENT_MODE !== modeVal) {
+          return false;
         }
-
-        // Revenue Code filter
-        if (revCodeVal !== 'ALL') {
-          if (item.REVENUE_CODE !== revCodeVal) return false;
+        if (revCodeVal !== 'ALL' && item.REVENUE_CODE !== revCodeVal) {
+          return false;
         }
-
-        // Search text
         if (searchVal) {
-          const matchTarget = `${item.MC_ID} ${item.TRANS_ID} ${item.DRM_RECEIPT_NO} ${item.ITEM_DESC} ${item.REVENUE_CODE}`.toLowerCase();
+          const matchTarget = `${item.SHEET_NAME} ${item.MC_ID} ${item.TRANS_ID} ${item.DRM_RECEIPT_NO} ${item.ITEM_DESC} ${item.REVENUE_CODE}`.toLowerCase();
           if (!matchTarget.includes(searchVal)) return false;
         }
-
         return true;
       });
 
@@ -661,12 +785,15 @@
     }
 
     function resetFilters() {
+      selectedSheetFilter = 'ALL';
+      document.getElementById('filterSheetCategory').value = 'ALL';
       document.getElementById('filterMonth').value = 'ALL';
       document.getElementById('filterMode').value = 'ALL';
       document.getElementById('filterRevenueCode').value = 'ALL';
       document.getElementById('searchInput').value = '';
+      renderSheetTabs();
       applyFilters();
-      showToast('Semua penapis telah ditetapkan semula');
+      showToast('Semua penapis telah diset semula');
     }
 
     // --- KPI CARDS COMPUTATION ---
@@ -674,36 +801,31 @@
       const totalCount = filteredTransactions.length;
       const totalRevenue = filteredTransactions.reduce((acc, curr) => acc + Number(curr.ITEM_AMOUNT || 0), 0);
       const avgTicket = totalCount > 0 ? totalRevenue / totalCount : 0;
-
-      // Count per day approximation
       const avgPerDay = (totalCount / 365).toFixed(1);
 
-      // Payment modes share
       let fpxCount = 0;
       let migsCount = 0;
-      const revCodeCounts = {};
+      const sheetSums = {};
 
       filteredTransactions.forEach(t => {
         if (t.PAYMENT_MODE === 'FPX') fpxCount++;
         else if (t.PAYMENT_MODE === 'MIGS') migsCount++;
 
-        revCodeCounts[t.REVENUE_CODE] = (revCodeCounts[t.REVENUE_CODE] || 0) + 1;
+        sheetSums[t.SHEET_NAME] = (sheetSums[t.SHEET_NAME] || 0) + Number(t.ITEM_AMOUNT || 0);
       });
 
       const topMode = fpxCount >= migsCount ? 'FPX' : 'MIGS';
       const topModeShare = totalCount > 0 ? (((topMode === 'FPX' ? fpxCount : migsCount) / totalCount) * 100).toFixed(1) : 0;
 
-      // Top revenue code
-      let topCode = '-';
-      let maxCodeCount = 0;
-      for (const [code, count] of Object.entries(revCodeCounts)) {
-        if (count > maxCodeCount) {
-          maxCodeCount = count;
-          topCode = code;
+      let topCategory = '-';
+      let maxCategorySum = 0;
+      for (const [sh, sum] of Object.entries(sheetSums)) {
+        if (sum > maxCategorySum) {
+          maxCategorySum = sum;
+          topCategory = sh;
         }
       }
 
-      // Format currency
       const formatRM = (val) => 'RM ' + val.toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       document.getElementById('kpiTotalRevenue').textContent = formatRM(totalRevenue);
@@ -712,67 +834,60 @@
       document.getElementById('kpiAvgTicket').textContent = formatRM(avgTicket);
       document.getElementById('kpiTopMode').textContent = topMode;
       document.getElementById('kpiTopModeShare').textContent = `(${topModeShare}%)`;
-      document.getElementById('kpiTopRevenueCode').textContent = topCode !== '-' ? topCode : 'N/A';
+      document.getElementById('kpiTopRevenueCode').textContent = topCategory !== '-' ? topCategory : 'N/A';
     }
 
-    // --- CHART RENDERING ---
-    function isDarkMode() {
-      return document.documentElement.classList.contains('dark');
-    }
-
+    // --- CHART THEMING & RENDERING ---
     function getChartThemeColors() {
-      const dark = isDarkMode();
+      const isDark = document.documentElement.classList.contains('dark');
       return {
-        text: dark ? '#94a3b8' : '#64748b',
-        grid: dark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-        tooltipBg: dark ? '#1e293b' : '#0f172a',
-        tooltipText: '#ffffff'
+        text: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? '#1e293b' : '#f1f5f9',
+        tooltipBg: isDark ? '#0f172a' : '#ffffff',
+        tooltipText: isDark ? '#f8fafc' : '#0f172a'
       };
     }
 
     function renderAllCharts() {
       renderMonthlyTrendChart();
       renderPaymentModeChart();
-      renderRevenueCodeChart();
+      renderSheetCategoryChart();
       renderHourlyChart();
     }
 
-    // 1. Monthly Trend Chart (Area / Line)
     function renderMonthlyTrendChart() {
       const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
       const theme = getChartThemeColors();
 
-      // Aggregate revenue per month (1 to 12)
-      const monthlySum = new Array(12).fill(0);
+      const monthlyTotals = new Array(12).fill(0);
       filteredTransactions.forEach(t => {
         const m = t.DATE_OBJ.getMonth();
-        monthlySum[m] += Number(t.ITEM_AMOUNT || 0);
+        monthlyTotals[m] += Number(t.ITEM_AMOUNT || 0);
       });
 
       const monthNames = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'];
 
-      // Gradient background
-      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.45)');
-      gradient.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
-
       if (trendChartInstance) trendChartInstance.destroy();
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+      gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
 
       trendChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
           labels: monthNames,
           datasets: [{
-            label: 'Kutipan Bulanan (RM)',
-            data: monthlySum,
+            label: 'Kutipan (RM)',
+            data: monthlyTotals,
             borderColor: '#6366f1',
             borderWidth: 3,
             backgroundColor: gradient,
             fill: true,
             tension: 0.35,
             pointBackgroundColor: '#6366f1',
-            pointHoverRadius: 6,
-            pointRadius: 4
+            pointRadius: 4,
+            pointHoverRadius: 6
           }]
         },
         options: {
@@ -784,7 +899,6 @@
               backgroundColor: theme.tooltipBg,
               titleColor: theme.tooltipText,
               bodyColor: theme.tooltipText,
-              padding: 10,
               cornerRadius: 8,
               callbacks: {
                 label: (ctx) => ` Kutipan: RM ${ctx.parsed.y.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
@@ -809,7 +923,6 @@
       });
     }
 
-    // 2. Payment Mode Doughnut
     function renderPaymentModeChart() {
       const ctx = document.getElementById('paymentModeChart').getContext('2d');
       const theme = getChartThemeColors();
@@ -820,31 +933,26 @@
       let migsCount = 0;
 
       filteredTransactions.forEach(t => {
-        const amt = Number(t.ITEM_AMOUNT || 0);
         if (t.PAYMENT_MODE === 'FPX') {
-          fpxSum += amt;
+          fpxSum += Number(t.ITEM_AMOUNT || 0);
           fpxCount++;
         } else {
-          migsSum += amt;
+          migsSum += Number(t.ITEM_AMOUNT || 0);
           migsCount++;
         }
       });
-
-      const totalRevenue = fpxSum + migsSum;
-      const fpxPercent = totalRevenue > 0 ? ((fpxSum / totalRevenue) * 100).toFixed(1) : 0;
-      const migsPercent = totalRevenue > 0 ? ((migsSum / totalRevenue) * 100).toFixed(1) : 0;
 
       if (paymentChartInstance) paymentChartInstance.destroy();
 
       paymentChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: ['FPX (Online Banking)', 'MIGS (Kad Kredit/Debit)'],
+          labels: ['FPX', 'MIGS / Kad Kredit'],
           datasets: [{
             data: [fpxSum, migsSum],
             backgroundColor: ['#6366f1', '#06b6d4'],
-            hoverOffset: 6,
-            borderWidth: 0
+            borderWidth: 0,
+            hoverOffset: 4
           }]
         },
         options: {
@@ -852,14 +960,7 @@
           maintainAspectRatio: false,
           cutout: '72%',
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                color: theme.text,
-                boxWidth: 12,
-                font: { family: 'Plus Jakarta Sans', size: 11 }
-              }
-            },
+            legend: { display: false },
             tooltip: {
               backgroundColor: theme.tooltipBg,
               titleColor: theme.tooltipText,
@@ -873,47 +974,53 @@
         }
       });
 
-      // Update Breakdown details below chart
-      const container = document.getElementById('paymentModeBreakdown');
-      container.innerHTML = `
-        <div class="flex justify-between items-center">
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> FPX:</span>
-          <span class="font-bold text-slate-800 dark:text-slate-200">RM ${fpxSum.toLocaleString('ms-MY', { minimumFractionDigits: 2 })} (${fpxPercent}%)</span>
+      const total = fpxSum + migsSum || 1;
+      const fpxPct = ((fpxSum / total) * 100).toFixed(1);
+      const migsPct = ((migsSum / total) * 100).toFixed(1);
+
+      document.getElementById('paymentModeBreakdown').innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> FPX (${fpxCount} txn)</div>
+          <div class="font-bold text-slate-800 dark:text-slate-200">RM ${fpxSum.toLocaleString('ms-MY', { maximumFractionDigits: 0 })} (${fpxPct}%)</div>
         </div>
-        <div class="flex justify-between items-center">
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-500"></span> MIGS:</span>
-          <span class="font-bold text-slate-800 dark:text-slate-200">RM ${migsSum.toLocaleString('ms-MY', { minimumFractionDigits: 2 })} (${migsPercent}%)</span>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> MIGS (${migsCount} txn)</div>
+          <div class="font-bold text-slate-800 dark:text-slate-200">RM ${migsSum.toLocaleString('ms-MY', { maximumFractionDigits: 0 })} (${migsPct}%)</div>
         </div>
       `;
     }
 
-    // 3. Revenue Code Distribution (Horizontal Bar / Bar)
-    function renderRevenueCodeChart() {
-      const ctx = document.getElementById('revenueCodeChart').getContext('2d');
+    function renderSheetCategoryChart() {
+      const ctx = document.getElementById('sheetCategoryChart').getContext('2d');
       const theme = getChartThemeColors();
 
-      const codeTotals = {};
+      const sheetTotals = {};
+      WORKSHEET_NAMES.forEach(name => { sheetTotals[name] = 0; });
       filteredTransactions.forEach(t => {
-        codeTotals[t.REVENUE_CODE] = (codeTotals[t.REVENUE_CODE] || 0) + Number(t.ITEM_AMOUNT || 0);
+        sheetTotals[t.SHEET_NAME] = (sheetTotals[t.SHEET_NAME] || 0) + Number(t.ITEM_AMOUNT || 0);
       });
 
-      // Sort descending by amount
-      const sortedCodes = Object.keys(codeTotals).sort((a, b) => codeTotals[b] - codeTotals[a]);
-      const amounts = sortedCodes.map(c => codeTotals[c]);
+      let keys = Object.keys(sheetTotals);
+      if (selectedSheetFilter !== 'ALL') {
+        keys = [selectedSheetFilter];
+      } else {
+        keys = keys.sort((a, b) => sheetTotals[b] - sheetTotals[a]);
+      }
 
-      const colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#ec4899', '#8b5cf6'];
+      const amounts = keys.map(k => sheetTotals[k] || 0);
+      const palette = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e', '#3b82f6', '#84cc16', '#a855f7'];
 
-      if (revenueCodeChartInstance) revenueCodeChartInstance.destroy();
+      if (sheetCategoryChartInstance) sheetCategoryChartInstance.destroy();
 
-      revenueCodeChartInstance = new Chart(ctx, {
+      sheetCategoryChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: sortedCodes.map(c => `Kod ${c}`),
+          labels: keys,
           datasets: [{
-            label: 'Jumlah (RM)',
+            label: 'Kutipan (RM)',
             data: amounts,
-            backgroundColor: sortedCodes.map((_, i) => colors[i % colors.length]),
-            borderRadius: 8
+            backgroundColor: keys.map((_, i) => palette[i % palette.length]),
+            borderRadius: 6
           }]
         },
         options: {
@@ -934,13 +1041,18 @@
           scales: {
             x: {
               grid: { display: false },
-              ticks: { color: theme.text, font: { family: 'Plus Jakarta Sans', size: 11 } }
+              ticks: { 
+                color: theme.text, 
+                font: { family: 'Plus Jakarta Sans', size: 9 },
+                maxRotation: 45,
+                minRotation: 25
+              }
             },
             y: {
               grid: { color: theme.grid },
               ticks: {
                 color: theme.text,
-                font: { family: 'Plus Jakarta Sans', size: 11 },
+                font: { family: 'Plus Jakarta Sans', size: 10 },
                 callback: (val) => 'RM ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val)
               }
             }
@@ -949,18 +1061,17 @@
       });
     }
 
-    // 4. Hourly Distribution Bar Chart
     function renderHourlyChart() {
       const ctx = document.getElementById('hourlyDistChart').getContext('2d');
       const theme = getChartThemeColors();
 
-      const hoursCount = new Array(24).fill(0);
+      const hours = new Array(24).fill(0);
       filteredTransactions.forEach(t => {
-        const hour = t.DATE_OBJ.getHours();
-        hoursCount[hour]++;
+        const h = t.DATE_OBJ.getHours();
+        hours[h]++;
       });
 
-      const labels = hoursCount.map((_, i) => `${String(i).padStart(2, '0')}:00`);
+      const labels = hours.map((_, i) => `${String(i).padStart(2, '0')}:00`);
 
       if (hourlyChartInstance) hourlyChartInstance.destroy();
 
@@ -970,7 +1081,7 @@
           labels: labels,
           datasets: [{
             label: 'Bil. Transaksi',
-            data: hoursCount,
+            data: hours,
             backgroundColor: '#f59e0b',
             borderRadius: 4
           }]
@@ -986,19 +1097,17 @@
               bodyColor: theme.tooltipText,
               cornerRadius: 8,
               callbacks: {
-                label: (ctx) => ` Transaksi: ${ctx.parsed.y} rekod`
+                label: (ctx) => ` ${ctx.parsed.y} Transaksi`
               }
             }
           },
           scales: {
             x: {
               grid: { display: false },
-              ticks: {
-                color: theme.text,
-                maxRotation: 0,
-                autoSkip: true,
-                maxTicksLimit: 8,
-                font: { family: 'Plus Jakarta Sans', size: 10 }
+              ticks: { 
+                color: theme.text, 
+                font: { family: 'Plus Jakarta Sans', size: 9 },
+                maxTicksLimit: 12
               }
             },
             y: {
@@ -1010,34 +1119,12 @@
       });
     }
 
-    // --- DATA TABLE SORTING & PAGINATION ---
-    function sortTable(column) {
-      if (sortColumn === column) {
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortColumn = column;
-        sortDirection = 'desc';
-      }
-      renderTable();
-    }
-
-    function changePageSize() {
-      pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
-      currentPage = 1;
-      renderTable();
-    }
-
-    function goToPage(page) {
-      currentPage = page;
-      renderTable();
-    }
-
+    // --- TABLE RENDERING & PAGINATION ---
     function renderTable() {
       const tbody = document.getElementById('transactionTableBody');
       const countEl = document.getElementById('tableRecordCount');
       countEl.textContent = filteredTransactions.length.toLocaleString();
 
-      // Sort
       const sorted = [...filteredTransactions].sort((a, b) => {
         let valA = a[sortColumn];
         let valB = b[sortColumn];
@@ -1055,7 +1142,6 @@
         return 0;
       });
 
-      // Pagination slice
       const totalItems = sorted.length;
       const totalPages = Math.ceil(totalItems / pageSize) || 1;
       if (currentPage > totalPages) currentPage = totalPages;
@@ -1064,17 +1150,16 @@
       const endIndex = Math.min(startIndex + pageSize, totalItems);
       const pageData = sorted.slice(startIndex, endIndex);
 
-      // Render rows
       if (pageData.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" class="text-center py-8 text-slate-400">
+            <td colspan="7" class="text-center py-8 text-slate-400">
               <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-              Tiada rekod ditemui mengikut tapisan semasa.
+              Tiada rekod transaksi dijumpai bagi kriteria ini.
             </td>
           </tr>
         `;
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
       } else {
         tbody.innerHTML = pageData.map(row => {
           const modeBadge = row.PAYMENT_MODE === 'FPX' 
@@ -1085,6 +1170,11 @@
             <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
               <td class="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap font-mono text-xs">
                 ${row.PAYMENT_DATETIME}
+              </td>
+              <td class="py-3 px-3 whitespace-nowrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  ${row.SHEET_NAME}
+                </span>
               </td>
               <td class="py-3 px-3">
                 <div class="font-bold text-slate-800 dark:text-slate-200">${row.DRM_RECEIPT_NO}</div>
@@ -1107,7 +1197,6 @@
         }).join('');
       }
 
-      // Pagination indicators
       document.getElementById('paginationInfo').textContent = 
         totalItems === 0 
           ? 'Menunjukkan 0 rekod' 
@@ -1117,75 +1206,92 @@
     }
 
     function renderPaginationButtons(totalPages) {
-      const container = document.getElementById('paginationControls');
-      if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
-      }
-
+      const controls = document.getElementById('paginationControls');
       let html = '';
-      // Prev Button
+
       html += `
-        <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed">
-          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          &larr;
         </button>
       `;
 
-      // Page numbers (simple window)
-      for (let p = Math.max(1, currentPage - 2); p <= Math.min(totalPages, currentPage + 2); p++) {
-        const activeClass = p === currentPage 
-          ? 'bg-indigo-600 text-white font-bold' 
-          : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, currentPage + 2);
+
+      for (let p = start; p <= end; p++) {
+        const active = p === currentPage;
         html += `
-          <button onclick="goToPage(${p})" class="w-7 h-7 text-xs rounded-lg ${activeClass} transition">
+          <button onclick="goToPage(${p})" class="px-3 py-1 rounded-lg text-xs font-semibold ${active ? 'bg-indigo-600 text-white' : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'} transition">
             ${p}
           </button>
         `;
       }
 
-      // Next Button
       html += `
-        <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed">
-          <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          &rarr;
         </button>
       `;
 
-      container.innerHTML = html;
-      lucide.createIcons();
+      controls.innerHTML = html;
     }
 
-    // --- CSV EXPORT ---
+    function goToPage(page) {
+      const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
+      if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderTable();
+      }
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
+      currentPage = 1;
+      renderTable();
+    }
+
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = column;
+        sortDirection = 'desc';
+      }
+      renderTable();
+    }
+
+    // --- EXPORT TO CSV ---
     function exportCurrentViewCSV() {
       if (filteredTransactions.length === 0) {
-        showToast('Tiada data untuk dieksport!');
+        showToast('Tiada rekod untuk dieksport.');
         return;
       }
 
-      const headers = ['MC_ID', 'TRANS_ID', 'DRM_RECEIPT_NO', 'PAYMENT_DATETIME', 'PAYMENT_MODE', 'REVENUE_CODE', 'ITEM_DESC', 'ITEM_AMOUNT'];
+      const headers = ['Sheet/Kategori', 'Tarikh & Masa', 'No Resit', 'ID Transaksi', 'MC ID', 'Kod Hasil', 'Keterangan Item', 'Kaedah Bayaran', 'Jumlah (RM)'];
       const rows = filteredTransactions.map(t => [
-        `"${t.MC_ID}"`,
-        `"${t.TRANS_ID}"`,
-        `"${t.DRM_RECEIPT_NO}"`,
-        `"${t.PAYMENT_DATETIME}"`,
-        `"${t.PAYMENT_MODE}"`,
-        `"${t.REVENUE_CODE}"`,
-        `"${(t.ITEM_DESC || '').replace(/"/g, '""')}"`,
-        t.ITEM_AMOUNT
+        t.SHEET_NAME,
+        t.PAYMENT_DATETIME,
+        t.DRM_RECEIPT_NO,
+        t.TRANS_ID,
+        t.MC_ID,
+        t.REVENUE_CODE,
+        `"${t.ITEM_DESC.replace(/"/g, '""')}"`,
+        t.PAYMENT_MODE,
+        Number(t.ITEM_AMOUNT).toFixed(2)
       ]);
 
       const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement('a');
       link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `DBAYAR_KUTIPAN_EKSPORT_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute('download', `DBayar_Analytics_Export_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      showToast(`Berjaya mengeksport ${filteredTransactions.length} rekod CSV!`);
+      showToast('Fail CSV berjaya dimuat turun!');
     }
 
-    // --- FILE UPLOAD & PARSING (EXCEL & CSV) ---
+    // --- FILE UPLOAD & DROPZONE ---
     function initDropzone() {
       const dropZone = document.getElementById('dropZone');
       const fileInput = document.getElementById('fileInput');
@@ -1194,17 +1300,16 @@
 
       dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.classList.add('border-indigo-500', 'bg-indigo-500/5');
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50/10');
       });
 
-      ['dragleave', 'drop'].forEach(evt => {
-        dropZone.addEventListener(evt, () => {
-          dropZone.classList.remove('border-indigo-500', 'bg-indigo-500/5');
-        });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/10');
       });
 
       dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/10');
         if (e.dataTransfer.files.length) {
           processUploadedFile(e.dataTransfer.files[0]);
         }
@@ -1223,35 +1328,42 @@
 
       const reader = new FileReader();
 
-      if (fileName.endsWith('.csv')) {
-        reader.onload = function(e) {
-          parseCSVText(e.target.result);
-        };
-        reader.readAsText(file);
-      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         reader.onload = function(e) {
           try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            
-            // Look for non-SUM sheets or the first sheet
-            let targetSheetName = workbook.SheetNames.find(n => !n.toUpperCase().includes('SUM')) || workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[targetSheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            const allUploadedRecords = [];
 
-            if (json.length > 0) {
-              normalizeAndLoadData(json);
+            workbook.SheetNames.forEach(sheetName => {
+              if (sheetName.trim().toUpperCase() === 'SUM') return; // abaikan sheet SUM
+              const worksheet = workbook.Sheets[sheetName];
+              const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+              json.forEach((row, idx) => {
+                const norm = normalizeSingleRow(row, idx, sheetName);
+                if (norm) allUploadedRecords.push(norm);
+              });
+            });
+
+            if (allUploadedRecords.length > 0) {
+              rawTransactions = allUploadedRecords;
+              populateRevenueFilterOptions();
+              applyFilters();
               toggleModal('importModal');
-              showToast(`Berjaya memuatkan ${json.length} rekod dari ${targetSheetName}!`);
+              showToast(`Berjaya memuatkan ${allUploadedRecords.length} transaksi daripada ${workbook.SheetNames.length - 1} sheet!`);
             } else {
-              showToast('Sheet kosong atau format tidak sah.');
+              showToast('Tiada rekod ditemui dalam fail.');
             }
           } catch (err) {
-            console.error(err);
             showToast('Ralat memproses fail Excel.');
           }
         };
         reader.readAsArrayBuffer(file);
+      } else if (fileName.endsWith('.csv')) {
+        reader.onload = function(e) {
+          parseCSVText(e.target.result);
+        };
+        reader.readAsText(file);
       } else {
         showToast('Format fail tidak disokong. Sila guna .xlsx, .xls atau .csv.');
       }
@@ -1273,70 +1385,51 @@
         skipEmptyLines: true,
         complete: function(results) {
           if (results.data && results.data.length > 0) {
-            normalizeAndLoadData(results.data);
-            showToast(`Berjaya memuatkan ${results.data.length} rekod CSV!`);
+            const parsedRows = [];
+            results.data.forEach((row, i) => {
+              const norm = normalizeSingleRow(row, i, selectedSheetFilter !== 'ALL' ? selectedSheetFilter : 'Taksiran');
+              if (norm) parsedRows.push(norm);
+            });
+            rawTransactions = parsedRows;
+            populateRevenueFilterOptions();
+            applyFilters();
+            showToast(`Berjaya memuatkan ${parsedRows.length} rekod CSV!`);
           } else {
             showToast('Tiada data sah dijumpai dalam teks CSV.');
           }
         },
         error: function(err) {
-          console.error(err);
           showToast('Ralat membaca teks CSV.');
         }
       });
     }
 
-    // Map any custom column names to canonical DBayar model
-    function normalizeAndLoadData(dataArray) {
-      const cleanRecords = [];
+    // --- THEME TOGGLE & MODALS ---
+    function initTheme() {
+      const isDark = localStorage.getItem('theme') !== 'light';
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      updateThemeIcon(isDark);
+    }
 
-      dataArray.forEach((row, idx) => {
-        // Resolve field names flexibly
-        const getField = (keys) => {
-          for (let k of keys) {
-            const match = Object.keys(row).find(x => x.trim().toUpperCase() === k.toUpperCase());
-            if (match && row[match] !== undefined) return row[match];
-          }
-          return '';
-        };
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon(isDark);
+      renderAllCharts();
+    }
 
-        const dtStr = getField(['PAYMENT_DATETIME', 'DATETIME', 'DATE', 'TARIKH']);
-        let dateObj = dtStr ? new Date(dtStr) : new Date(2024, 0, 1);
-        if (isNaN(dateObj.getTime())) {
-          dateObj = new Date(2024, 0, (idx % 28) + 1);
-        }
-
-        const amountRaw = getField(['ITEM_AMOUNT', 'AMOUNT', 'JUMLAH', 'TOTAL']);
-        const amount = parseFloat(String(amountRaw).replace(/[^0-9.-]+/g, '')) || 0;
-
-        const revCode = String(getField(['REVENUE_CODE', 'KOD_HASIL', 'CODE']) || '13001').trim();
-        const mode = String(getField(['PAYMENT_MODE', 'MODE', 'SALURAN']) || 'FPX').toUpperCase().includes('MIGS') ? 'MIGS' : 'FPX';
-        const desc = getField(['ITEM_DESC', 'KETERANGAN', 'DESC']) || 'Terimaan Pelbagai DBayar';
-        const receiptNo = getField(['DRM_RECEIPT_NO', 'RECEIPT_NO', 'NO_RESIT']) || ('DRM24' + String(idx + 1000));
-        const transId = getField(['TRANS_ID', 'TRANSACTION_ID', 'ID']) || ('TXN-2024-' + idx);
-        const mcId = getField(['MC_ID', 'MERCHANT_ID']) || 'MC001';
-
-        cleanRecords.push({
-          MC_ID: mcId,
-          TRANS_ID: transId,
-          DRM_RECEIPT_NO: receiptNo,
-          PAYMENT_DATETIME: dateObj.toISOString().slice(0, 19).replace('T', ' '),
-          PAYMENT_MODE: mode,
-          ITEM_AMOUNT: amount,
-          ITEM_DESC: desc,
-          REVENUE_CODE: revCode,
-          DATE_OBJ: dateObj
-        });
-      });
-
-      if (cleanRecords.length > 0) {
-        rawTransactions = cleanRecords;
-        populateRevenueFilterOptions();
-        applyFilters();
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('themeIcon');
+      if (icon) {
+        icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+        if (window.lucide) lucide.createIcons();
       }
     }
 
-    // --- MODAL & TOAST HELPERS ---
     function toggleModal(modalId) {
       const modal = document.getElementById(modalId);
       modal.classList.toggle('hidden');
