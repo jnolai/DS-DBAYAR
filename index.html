@@ -1,766 +1,894 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="ms" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Kutipan DBayar 2024</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DBayar 2024 Analytics Dashboard</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- SheetJS & PapaParse -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'sans-serif'],
           },
           colors: {
-            primary: {
+            brand: {
               50: '#eef2ff',
               100: '#e0e7ff',
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-            }
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            darkBg: '#0b0f19',
+            darkCard: '#111827',
+            darkBorder: '#1f2937'
           }
         }
       }
     }
   </script>
 
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- SheetJS (xlsx) for parsing uploaded excel files -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
   <style>
     body {
-      background-color: #f8fafc;
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+    .scrollbar-none::-webkit-scrollbar {
+      display: none;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 9999px;
+    .scrollbar-none {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
+    .glassmorphism {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
   </style>
 </head>
-<body class="text-slate-800 antialiased min-h-screen flex">
+<body class="bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
 
-  <!-- 1. LEFT MINI SIDEBAR -->
-  <aside class="w-20 bg-white border-r border-slate-100 flex flex-col items-center py-6 justify-between shrink-0 shadow-sm z-20">
-    <div class="flex flex-col items-center gap-8">
-      <!-- App Logo / Lightning bolt -->
-      <div class="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-        <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
-      </div>
-
-      <!-- Navigation Icons -->
-      <nav class="flex flex-col gap-5">
-        <button class="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center transition hover:bg-blue-100">
-          <i data-lucide="layout-grid" class="w-5 h-5"></i>
-        </button>
-        <button class="w-11 h-11 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl flex items-center justify-center transition">
-          <i data-lucide="credit-card" class="w-5 h-5"></i>
-        </button>
-        <button class="w-11 h-11 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl flex items-center justify-center transition">
-          <i data-lucide="arrow-left-right" class="w-5 h-5"></i>
-        </button>
-        <button class="w-11 h-11 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl flex items-center justify-center transition">
-          <i data-lucide="receipt-text" class="w-5 h-5"></i>
-        </button>
-        <button class="w-11 h-11 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl flex items-center justify-center transition">
-          <i data-lucide="pie-chart" class="w-5 h-5"></i>
-        </button>
-      </nav>
-    </div>
-
-    <!-- Bottom Actions -->
-    <div class="flex flex-col gap-5 text-slate-400">
-      <button class="w-11 h-11 hover:text-slate-600 hover:bg-slate-50 rounded-xl flex items-center justify-center transition">
-        <i data-lucide="settings" class="w-5 h-5"></i>
-      </button>
-      <button class="w-11 h-11 hover:text-rose-500 hover:bg-rose-50 rounded-xl flex items-center justify-center transition">
-        <i data-lucide="log-out" class="w-5 h-5"></i>
-      </button>
-    </div>
-  </aside>
-
-  <!-- 2. MAIN WORKSPACE -->
-  <div class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
-
-    <!-- Top Header -->
-    <header class="px-8 py-5 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-        <p class="text-xs text-slate-400 mt-0.5">Analisis Kutipan Terimaan DBayar 2024</p>
-      </div>
-
-      <!-- Top Tools & Actions -->
-      <div class="flex items-center gap-4">
-        <!-- Search Bar -->
-        <div class="relative w-80 hidden md:block">
-          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-          <input type="text" id="globalSearch" placeholder="Cari transaksi, item, resit..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs focus:outline-none focus:border-blue-500 focus:bg-white transition">
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-darkCard/80 glassmorphism transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
         </div>
-
-        <!-- Sync Button -->
-        <button id="btnSync" onclick="fetchFromGoogleSheets()" class="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm shadow-blue-500/20 transition">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          <span>Segerak G-Sheets</span>
-        </button>
-
-        <!-- Upload File Button -->
-        <label class="flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition">
-          <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-          <span>Muat Naik XLSX</span>
-          <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
-        </label>
-
-        <!-- Notification Bell -->
-        <button class="relative w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition">
-          <i data-lucide="bell" class="w-4 h-4"></i>
-          <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full"></span>
-        </button>
-
-        <!-- Profile Avatar -->
-        <div class="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-blue-500/20">
-            ZR
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">DBayar Analytics</h1>
+            <span id="liveStatusBadge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+              Multi-Sheet 2024
+            </span>
           </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Konsolidasi 11 Sheet Terimaan & Kutipan DBayar</p>
         </div>
       </div>
-    </header>
 
-    <!-- Sheet Tabs Filter Bar (Taksiran, Perbadanan Pengurusan, Bil Air, etc.) -->
-    <div class="bg-white px-8 py-2.5 border-b border-slate-100 flex items-center gap-2 overflow-x-auto custom-scrollbar text-xs">
-      <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1 mr-1">
-        <i data-lucide="layers" class="w-3.5 h-3.5"></i> Sheet:
-      </span>
-      <div id="sheetTabsContainer" class="flex items-center gap-1.5 shrink-0">
-        <!-- Generated Dynamically -->
+      <!-- Action Tools -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Live Google Sheets Sync Button -->
+        <button id="syncGoogleSheetsBtn" onclick="syncAllGoogleSheets()" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/50 transition-all shadow-sm">
+          <i data-lucide="refresh-cw" id="syncIcon" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Segerak G-Sheets</span>
+        </button>
+
+        <!-- Import Data Button -->
+        <button onclick="toggleModal('importModal')" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/50 transition-all">
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Muat Naik Fail</span>
+        </button>
+
+        <!-- Export CSV Button -->
+        <button onclick="exportCurrentViewCSV()" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Eksport CSV</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" title="Tukar Tema">
+          <i id="themeIcon" data-lucide="sun" class="w-4 h-4"></i>
+        </button>
       </div>
     </div>
 
-    <!-- 3. DASHBOARD CONTENT GRID (2 COLUMNS: LEFT 70% | RIGHT 30%) -->
-    <main class="p-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
+    <!-- HORIZONTAL SHEET NAVIGATION TAB BAR -->
+    <div class="border-t border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/60 px-4 sm:px-8 overflow-x-auto scrollbar-none">
+      <div id="sheetTabsContainer" class="flex items-center space-x-1 py-2 text-xs font-semibold whitespace-nowrap min-w-max">
+        <!-- Rendered dynamically via renderSheetTabs() -->
+      </div>
+    </div>
+  </header>
 
-      <!-- LEFT AREA (8 COLUMNS) -->
-      <section class="xl:col-span-8 flex flex-col gap-8">
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- 4 Stat Cards Row -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <!-- Card 1: Balance (Cobalt Blue Gradient Highlighted) -->
-          <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 rounded-3xl shadow-xl shadow-blue-600/20 flex flex-col justify-between relative overflow-hidden group">
-            <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
-            <div class="flex items-center justify-between">
-              <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
-              </div>
-              <button class="text-white/60 hover:text-white"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
-            </div>
-            <div class="mt-4">
-              <p class="text-xs text-blue-100 font-medium">Jumlah Kutipan (RM)</p>
-              <h3 id="statTotalAmount" class="text-2xl font-black tracking-tight mt-0.5">RM 0.00</h3>
-            </div>
-          </div>
-
-          <!-- Card 2: Income / Bilangan Transaksi -->
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-              <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <i data-lucide="hand-coins" class="w-5 h-5"></i>
-              </div>
-              <button class="text-slate-300 hover:text-slate-500"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
-            </div>
-            <div class="mt-4">
-              <p class="text-xs text-slate-400 font-medium">Bilangan Transaksi</p>
-              <h3 id="statTotalCount" class="text-2xl font-black text-slate-900 tracking-tight mt-0.5">0</h3>
-            </div>
-          </div>
-
-          <!-- Card 3: Purata Bayaran (Ticket Size) -->
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-              <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                <i data-lucide="piggy-bank" class="w-5 h-5"></i>
-              </div>
-              <button class="text-slate-300 hover:text-slate-500"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
-            </div>
-            <div class="mt-4">
-              <p class="text-xs text-slate-400 font-medium">Purata Transaksi</p>
-              <h3 id="statAvgTicket" class="text-2xl font-black text-slate-900 tracking-tight mt-0.5">RM 0.00</h3>
-            </div>
-          </div>
-
-          <!-- Card 4: Dominan Mode / Saluran Utama -->
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-            <div class="flex items-center justify-between">
-              <div class="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                <i data-lucide="credit-card" class="w-5 h-5"></i>
-              </div>
-              <button class="text-slate-300 hover:text-slate-500"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
-            </div>
-            <div class="mt-4">
-              <p class="text-xs text-slate-400 font-medium">Saluran Utama (FPX/MIGS)</p>
-              <h3 id="statTopMode" class="text-2xl font-black text-slate-900 tracking-tight mt-0.5">-</h3>
-            </div>
-          </div>
-        </div>
-
-        <!-- Charts Row: Finances Line Chart & All Expenses Doughnut -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          <!-- Finances Line / Area Chart (8 Columns) -->
-          <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h4 class="font-bold text-slate-900 text-sm">Trend Kutipan (Finances)</h4>
-                <p class="text-xs text-slate-400">Pola aliran kutipan bulanan tahun 2024</p>
-              </div>
-              <div class="flex items-center gap-3 text-xs">
-                <span class="flex items-center gap-1.5 text-blue-600 font-medium">
-                  <span class="w-2 h-2 rounded-full bg-blue-600"></span> Kutipan
-                </span>
-                <span class="flex items-center gap-1.5 text-rose-400 font-medium">
-                  <span class="w-2 h-2 rounded-full bg-rose-400"></span> Sasaran
-                </span>
-              </div>
-            </div>
-            <div class="h-64 w-full">
-              <canvas id="financesChart"></canvas>
-            </div>
-          </div>
-
-          <!-- Category Doughnut Chart (5 Columns) -->
-          <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="font-bold text-slate-900 text-sm">Pecahan Kategori</h4>
-              <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">Kutipan (%)</span>
-            </div>
-            <div class="h-52 w-full flex items-center justify-center my-auto relative">
-              <canvas id="expensesChart"></canvas>
-            </div>
-            <!-- Category Mini Stats Summary -->
-            <div id="categoryMiniStats" class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-center text-xs">
-              <div>
-                <p class="text-slate-400 text-[10px]">Taksiran</p>
-                <p id="miniTaksiranVal" class="font-bold text-slate-800 text-xs">RM 0</p>
-              </div>
-              <div>
-                <p class="text-slate-400 text-[10px]">Sewaan</p>
-                <p id="miniSewaanVal" class="font-bold text-slate-800 text-xs">RM 0</p>
-              </div>
-              <div>
-                <p class="text-slate-400 text-[10px]">Lain-lain</p>
-                <p id="miniLainVal" class="font-bold text-slate-800 text-xs">RM 0</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Transactions Table Section -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div>
-              <h4 class="font-bold text-slate-900 text-sm">Transaksi Terkini (Transactions)</h4>
-              <p class="text-xs text-slate-400">Senarai rekod pembayaran dari pelbagai sheet</p>
-            </div>
-
-            <!-- Table Filters -->
-            <div class="flex items-center gap-2">
-              <select id="filterMode" onchange="applyFilters()" class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-600 focus:outline-none focus:border-blue-500">
-                <option value="ALL">Semua Kaedah</option>
-                <option value="fpx">FPX</option>
-                <option value="migs">MIGS</option>
+    <!-- FILTERS TOOLBAR -->
+    <section class="p-4 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all">
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        
+        <!-- Filter dropdowns -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1">
+          <!-- Active Sheet / Kategori Dropdown -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Sheet / Kategori</label>
+            <div class="relative">
+              <select id="filterSheetCategory" onchange="onSheetDropdownChange(this.value)" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
               </select>
-              <button onclick="exportToCSV()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
-                <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                <span>Eksport CSV</span>
-              </button>
+              <i data-lucide="layers" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
             </div>
           </div>
 
-          <!-- Table Content -->
-          <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr class="text-slate-400 border-b border-slate-100 pb-3">
-                  <th class="py-3 px-3 font-semibold">Pembayar / Item</th>
-                  <th class="py-3 px-3 font-semibold">Sheet / Kategori</th>
-                  <th class="py-3 px-3 font-semibold">Kod Hasil</th>
-                  <th class="py-3 px-3 font-semibold">Tarikh & Masa</th>
-                  <th class="py-3 px-3 font-semibold text-right">Amaun (RM)</th>
-                  <th class="py-3 px-3 font-semibold text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody id="transactionTableBody" class="divide-y divide-slate-50">
-                <!-- Rows injected dynamically -->
-              </tbody>
-            </table>
+          <!-- Month Filter -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Bulan</label>
+            <div class="relative">
+              <select id="filterMonth" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="ALL">Semua Bulan (2024)</option>
+                <option value="1">Januari 2024</option>
+                <option value="2">Februari 2024</option>
+                <option value="3">Mac 2024</option>
+                <option value="4">April 2024</option>
+                <option value="5">Mei 2024</option>
+                <option value="6">Jun 2024</option>
+                <option value="7">Julai 2024</option>
+                <option value="8">Ogos 2024</option>
+                <option value="9">September 2024</option>
+                <option value="10">Oktober 2024</option>
+                <option value="11">November 2024</option>
+                <option value="12">Disember 2024</option>
+              </select>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
+            </div>
           </div>
 
-          <!-- Table Pagination -->
-          <div class="flex items-center justify-between mt-4 text-xs text-slate-500 pt-3 border-t border-slate-50">
-            <span id="paginationInfo">Memaparkan 0 daripada 0 rekod</span>
-            <div class="flex items-center gap-1.5">
-              <button id="btnPrevPage" onclick="changePage(-1)" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-xs">Sebelum</button>
-              <button id="btnNextPage" onclick="changePage(1)" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-xs">Seterusnya</button>
+          <!-- Payment Mode Filter -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kaedah Bayaran</label>
+            <div class="relative">
+              <select id="filterMode" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="ALL">Semua Kaedah (FPX & MIGS)</option>
+                <option value="FPX">FPX (Online Banking)</option>
+                <option value="MIGS">MIGS / Kad Kredit</option>
+              </select>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Revenue Code Filter -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kod Hasil</label>
+            <div class="relative">
+              <select id="filterRevenueCode" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="ALL">Semua Kod Hasil</option>
+              </select>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
             </div>
           </div>
         </div>
 
-      </section>
-
-      <!-- RIGHT PANEL (4 COLUMNS): MY CARDS & QUICK TRANSFER -->
-      <aside class="xl:col-span-4 flex flex-col gap-6">
-
-        <!-- My Cards Section (Bank Card Glassmorphic) -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-5">
-          <div class="flex items-center justify-between">
-            <h4 class="font-bold text-slate-900 text-sm">Akaun Kutipan (My Cards)</h4>
-            <button class="text-slate-300 hover:text-slate-500"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+        <!-- Search & Reset -->
+        <div class="flex items-end gap-2 pt-2 lg:pt-0">
+          <div class="relative w-full sm:w-60">
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Carian Terperinci</label>
+            <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Resit, Item, Sheet, MC ID..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-8 pointer-events-none"></i>
           </div>
-
-          <!-- Glassmorphic Virtual Card (Blue Vibrant) -->
-          <div class="w-full h-48 rounded-3xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 p-6 text-white shadow-xl shadow-blue-500/25 flex flex-col justify-between relative overflow-hidden">
-            <!-- Background Decorative circles -->
-            <div class="absolute -right-8 -bottom-8 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
-            <div class="absolute left-1/2 top-0 w-24 h-24 bg-indigo-400/20 rounded-full blur-lg pointer-events-none"></div>
-            
-            <div class="flex justify-between items-start z-10">
-              <div class="flex items-center gap-2">
-                <i data-lucide="landmark" class="w-5 h-5 text-blue-200"></i>
-                <span class="text-xs font-semibold tracking-wider uppercase text-blue-100">DBAYAR GATEWAY</span>
-              </div>
-              <span class="text-sm font-extrabold italic tracking-wider">VISA</span>
-            </div>
-
-            <!-- Card Number -->
-            <div class="z-10 tracking-widest font-mono text-base font-semibold">
-              •••• •••• •••• 2514
-            </div>
-
-            <!-- Cardholder and Expiry -->
-            <div class="flex justify-between items-end z-10 text-xs">
-              <div>
-                <p class="text-[10px] text-blue-200 uppercase font-medium">Pemegang Akaun</p>
-                <p class="font-bold tracking-wide">DEWAN BANDARAYA KL</p>
-              </div>
-              <div class="text-right">
-                <p class="text-[10px] text-blue-200 uppercase font-medium">Tahun</p>
-                <p class="font-bold font-mono">2024</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card Balance Breakdown -->
-          <div class="space-y-2.5 pt-2">
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">Kutipan Hari Ini</span>
-              <span class="font-bold text-slate-800">RM 14,850.00</span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">Status Gateway</span>
-              <span class="flex items-center gap-1.5 font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px]">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Aktif
-              </span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">Mata Wang</span>
-              <span class="font-semibold text-slate-700">MYR (Ringgit Malaysia)</span>
-            </div>
-          </div>
-
-          <button onclick="fetchFromGoogleSheets()" class="w-full py-2.5 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 text-xs font-bold transition flex items-center justify-center gap-1.5">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>Segerakkan Baki Langsung</span>
+          <button onclick="resetFilters()" title="Set Semula Semua Penapis" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
           </button>
         </div>
 
-        <!-- Quick Transfer & Saluran Pintas Widget -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-4">
-          <div class="flex items-center justify-between">
-            <h4 class="font-bold text-slate-900 text-sm">Semakan Pantas (Quick Search)</h4>
-            <span class="text-xs text-blue-600 font-semibold cursor-pointer">Lihat Semua</span>
+      </div>
+    </section>
+
+    <!-- EXECUTIVE KPI CARDS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- KPI 1: Jumlah Kutipan -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Jumlah Kutipan</span>
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <i data-lucide="dollar-sign" class="w-5 h-5"></i>
           </div>
-
-          <!-- Avatar list of departments / sheet categories -->
-          <div class="flex items-center gap-2.5 overflow-x-auto custom-scrollbar pb-1">
-            <div onclick="selectSheet('Taksiran')" class="flex flex-col items-center gap-1 cursor-pointer group shrink-0">
-              <div class="w-11 h-11 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition">
-                TK
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">Taksiran</span>
-            </div>
-
-            <div onclick="selectSheet('Perbadanan Pengurusan')" class="flex flex-col items-center gap-1 cursor-pointer group shrink-0">
-              <div class="w-11 h-11 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition">
-                PP
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">PP</span>
-            </div>
-
-            <div onclick="selectSheet('Bil Air')" class="flex flex-col items-center gap-1 cursor-pointer group shrink-0">
-              <div class="w-11 h-11 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition">
-                BA
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">Bil Air</span>
-            </div>
-
-            <div onclick="selectSheet('Sewaan Gerai Pasar')" class="flex flex-col items-center gap-1 cursor-pointer group shrink-0">
-              <div class="w-11 h-11 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition">
-                GP
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">Gerai</span>
-            </div>
-
-            <div onclick="selectSheet('Sewaan Parkir')" class="flex flex-col items-center gap-1 cursor-pointer group shrink-0">
-              <div class="w-11 h-11 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition">
-                PK
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">Parkir</span>
-            </div>
-          </div>
-
-          <!-- Quick Receipt Number Validator -->
-          <div class="mt-2 space-y-3">
-            <div>
-              <label class="text-[11px] font-semibold text-slate-500">Nombor Resit / Transaksi</label>
-              <input type="text" id="quickReceiptInput" placeholder="cth: 4334240100115" class="w-full mt-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500">
-            </div>
-
-            <div class="flex gap-2">
-              <button onclick="checkQuickReceipt()" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition">
-                Semak Resit
-              </button>
-              <button onclick="document.getElementById('quickReceiptInput').value=''" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
-                Kosongkan
-              </button>
-            </div>
-          </div>
-
         </div>
+        <div class="space-y-1">
+          <div id="kpiTotalRevenue" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">RM 0.00</div>
+          <div class="flex items-center text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5 mr-1"></i>
+            Kutipan Terimaan Sah 2024
+          </div>
+        </div>
+      </div>
 
-      </aside>
+      <!-- KPI 2: Bilangan Transaksi -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-emerald-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Jumlah Transaksi</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div id="kpiTotalCount" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">0</div>
+          <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
+            <span id="kpiAvgPerDay" class="font-medium text-slate-700 dark:text-slate-300">~ 0</span> &nbsp;transaksi / hari
+          </div>
+        </div>
+      </div>
 
-    </main>
+      <!-- KPI 3: Purata Nilai (Ticket Size) -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-cyan-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Purata Transaksi</span>
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+            <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div id="kpiAvgTicket" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">RM 0.00</div>
+          <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
+            Nisbah Purata per Resit
+          </div>
+        </div>
+      </div>
 
+      <!-- KPI 4: Mod Pembayaran & Kategori Dominan -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-purple-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Saluran & Kategori Teratas</span>
+          <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <i data-lucide="pie-chart" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiTopMode" class="text-lg font-bold text-slate-900 dark:text-white">FPX</span>
+            <span id="kpiTopModeShare" class="text-xs font-medium text-purple-600 dark:text-purple-400">(0%)</span>
+          </div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
+            Tertinggi: <span id="kpiTopRevenueCode" class="font-semibold text-slate-700 dark:text-slate-200">-</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CHARTS SECTION - ROW 1 -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Trend Bulanan (2 Cols) -->
+      <div class="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-4 h-4 text-indigo-500"></i>
+              Trend Kutipan Bulanan (2024)
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Kutipan kumulatif (RM) dari Januari hingga Disember</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="flex items-center gap-1.5 text-xs text-slate-500">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Kutipan (RM)
+            </span>
+          </div>
+        </div>
+        <div class="relative h-72 w-full">
+          <canvas id="monthlyTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Pecahan Kaedah Bayaran FPX vs MIGS (1 Col) -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="credit-card" class="w-4 h-4 text-cyan-500"></i>
+              Saluran Bayaran
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">FPX vs MIGS (Kad Kredit)</p>
+          </div>
+        </div>
+        <div class="relative h-56 w-full flex items-center justify-center">
+          <canvas id="paymentModeChart"></canvas>
+        </div>
+        <div id="paymentModeBreakdown" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CHARTS SECTION - ROW 2 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Pecahan Mengikut Sheet / Kategori -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="layout-grid" class="w-4 h-4 text-emerald-500"></i>
+              Kutipan Mengikut Kategori / Sheet
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Perbandingan jumlah kutipan antara 11 sheet Jabatan/Kategori</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="sheetCategoryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Taburan Waktu Pembayaran (Waktu Puncak) -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
+              Waktu Transaksi Puncak
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Taburan bilangan transaksi mengikut jam dalam sehari</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="hourlyDistChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- DETAILED TRANSACTION TABLE SECTION -->
+    <section class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-indigo-500"></i>
+            Log Transaksi Kutipan DBayar
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Senarai transaksi aktif (<span id="tableRecordCount">0</span> rekod)</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">Paparan Baris:</span>
+          <select id="pageSizeSelect" onchange="changePageSize()" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2 py-1 text-slate-700 dark:text-slate-300 focus:outline-none">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="overflow-x-auto my-3">
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
+              <th class="py-3 px-3 font-semibold cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('PAYMENT_DATETIME')">
+                Tarikh & Masa <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
+              </th>
+              <th class="py-3 px-3 font-semibold">Sheet / Kategori</th>
+              <th class="py-3 px-3 font-semibold">No. Resit / ID</th>
+              <th class="py-3 px-3 font-semibold cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('REVENUE_CODE')">
+                Kod Hasil <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
+              </th>
+              <th class="py-3 px-3 font-semibold">Keterangan Item</th>
+              <th class="py-3 px-3 font-semibold text-center">Kaedah</th>
+              <th class="py-3 px-3 font-semibold text-right cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('ITEM_AMOUNT')">
+                Jumlah (RM) <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+        <div id="paginationInfo">Menunjukkan 1 hingga 25 daripada 0 rekod</div>
+        <div class="flex items-center gap-1" id="paginationControls">
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: UPLOAD / IMPORT FILE -->
+  <div id="importModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-darkCard w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl relative space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-base">Muat Naik Data DBayar</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Sokong format fail Excel (.xlsx) atau CSV</p>
+          </div>
+        </div>
+        <button onclick="toggleModal('importModal')" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- File Dropzone -->
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 dark:bg-slate-900/50">
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileSelect(event)" />
+        <i data-lucide="cloud-upload" class="w-10 h-10 mx-auto text-indigo-500 mb-2"></i>
+        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Klik untuk pilih fail atau seret fail ke sini</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Fail `TERIMAAN_DBAYAR_2024 FINAL.xlsx`</p>
+      </div>
+
+      <!-- Or Paste CSV Data directly -->
+      <div class="space-y-1">
+        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Atau Tampal Teks CSV</label>
+        <textarea id="rawCsvInput" rows="3" placeholder="MC ID,TRANS_ID,PAYMENT_DATETIME,PAYMENT_MODE,ITEM_AMOUNT,ITEM_DESC,REVENUE_CODE..." class="w-full text-xs font-mono p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="reloadSampleDataset()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          Pulihkan Data Asal (2024)
+        </button>
+        <div class="flex gap-2">
+          <button onclick="toggleModal('importModal')" class="px-4 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">Batal</button>
+          <button onclick="processPastedCSV()" class="px-4 py-2 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30">Proses Teks</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- JAVASCRIPT LOGIC & GOOGLE SHEETS CONNECTOR -->
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-sm">
+    <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+    <span id="toastMsg">Mesej status</span>
+  </div>
+
+  <!-- APPLICATION LOGIC SCRIPT -->
   <script>
-    // Konfigurasi Google Sheets & Kategori Sebenar (Mengikut Sheet Tab Pengguna)
-    const GOOGLE_SHEET_ID = "18hYih8Uw9r-1KEWk6gfQTfXOJzBcCWRj";
-    const SHEET_NAMES = [
-      "Taksiran",
-      "Perbadanan Pengurusan",
-      "Bil Air",
-      "Sewaan Hartanah",
-      "Terimaan Pelbagai",
-      "Sewaan Gerai Pasar",
-      "Sewaan Parkir",
-      "Sewaan Perumahan",
-      "Sewaan Pelbagai",
-      "Cagaran",
-      "Jualan Perumahan"
+    // --- STATE MANAGEMENT ---
+    const GOOGLE_SPREADSHEET_ID = '18hYih8Uw9r-1KEWk6gfQTfXOJzBcCWRj';
+    const WORKSHEET_NAMES = [
+      'Taksiran',
+      'Perbadanan Pengurusan',
+      'Sewaan Perumahan',
+      'Sewaan Gerai Pasar',
+      'Bil Air',
+      'Sewaan Hartanah',
+      'Sewaan Parkir',
+      'Terimaan Pelbagai',
+      'Cagaran',
+      'Jualan Perumahan',
+      'Sewaan Pelbagai'
     ];
 
-    let allTransactions = [];
+    let rawTransactions = [];
     let filteredTransactions = [];
-    let currentSelectedSheet = "SEMUA";
+    let selectedSheetFilter = 'ALL';
     let currentPage = 1;
-    const pageSize = 8;
+    let pageSize = 25;
+    let sortColumn = 'PAYMENT_DATETIME';
+    let sortDirection = 'desc';
 
-    let financesChartInstance = null;
-    let expensesChartInstance = null;
+    // Chart instances
+    let trendChartInstance = null;
+    let paymentChartInstance = null;
+    let sheetCategoryChartInstance = null;
+    let hourlyChartInstance = null;
 
-    // Inisialisasi Aplikasi
-    document.addEventListener("DOMContentLoaded", () => {
-      lucide.createIcons();
-      renderSheetTabs();
-      generateMockRealisticData(); // Data segera supaya UI tidak kosong
-      initCharts();
-      updateDashboardUI();
+    // --- REALISTIC 2024 DATA GENERATOR (INSTANT FALLBACK) ---
+    const SHEET_META = {
+      'Taksiran': { code: '01001', desc: 'Cukai Taksiran Am', count: 320, min: 180, max: 2400 },
+      'Perbadanan Pengurusan': { code: '13005', desc: 'Caj Pengurusan Bangunan Strata', count: 120, min: 120, max: 950 },
+      'Sewaan Perumahan': { code: '03012', desc: 'Sewa Rumah Awam / PPR', count: 140, min: 100, max: 400 },
+      'Sewaan Gerai Pasar': { code: '03018', desc: 'Sewa Gerai & Pasar Awam', count: 130, min: 80, max: 600 },
+      'Bil Air': { code: '04001', desc: 'Bayaran Bil Bekalan Air', count: 110, min: 25, max: 320 },
+      'Sewaan Hartanah': { code: '03002', desc: 'Sewa Hartanah Komersial DBayar', count: 80, min: 650, max: 4500 },
+      'Sewaan Parkir': { code: '03020', desc: 'Pas Bulanan / Sewa Petak Parkir', count: 90, min: 60, max: 300 },
+      'Terimaan Pelbagai': { code: '74011', desc: 'Terimaan Am & Yuran Pentadbiran', count: 70, min: 50, max: 800 },
+      'Cagaran': { code: '81005', desc: 'Wang Cagaran Sewaan & Projek', count: 45, min: 500, max: 5000 },
+      'Jualan Perumahan': { code: '02008', desc: 'Bayaran Ansuran / Jualan Rumah', count: 35, min: 1200, max: 8500 },
+      'Sewaan Pelbagai': { code: '03099', desc: 'Sewa Dewan & Kemudahan Awam', count: 50, min: 150, max: 1200 }
+    };
 
-      // Listeners
-      document.getElementById("globalSearch").addEventListener("input", (e) => {
-        applyFilters(e.target.value);
+    function generateFullMultiSheet2024Dataset() {
+      const records = [];
+      let runningTransId = 240101101000;
+
+      WORKSHEET_NAMES.forEach(sheetName => {
+        const meta = SHEET_META[sheetName] || { code: '09999', desc: sheetName, count: 50, min: 50, max: 500 };
+
+        for (let i = 0; i < meta.count; i++) {
+          runningTransId += Math.floor(Math.random() * 4) + 1;
+          
+          let month;
+          if (sheetName === 'Taksiran') {
+            const r = Math.random();
+            month = r < 0.35 ? 1 : (r < 0.7 ? 7 : Math.floor(Math.random() * 12));
+          } else {
+            month = Math.floor(Math.random() * 12);
+          }
+
+          const day = Math.floor(Math.random() * 28) + 1;
+          const hour = Math.random() < 0.7 ? (Math.floor(Math.random() * 8) + 9) : Math.floor(Math.random() * 24);
+          const minute = Math.floor(Math.random() * 60);
+          const second = Math.floor(Math.random() * 60);
+          const dateObj = new Date(2024, month, day, hour, minute, second);
+
+          const formattedDate = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+          const mode = Math.random() < 0.76 ? 'FPX' : 'MIGS';
+          const amount = +(Math.random() * (meta.max - meta.min) + meta.min).toFixed(2);
+          const mcId = 'MC' + String(Math.floor(Math.random() * 80) + 10).padStart(3, '0');
+          const receiptNo = 'DRM24' + String(runningTransId).slice(-6);
+
+          records.push({
+            SHEET_NAME: sheetName,
+            MC_ID: mcId,
+            TRANS_ID: 'TXN-' + runningTransId,
+            DRM_RECEIPT_NO: receiptNo,
+            PAYMENT_DATETIME: formattedDate,
+            PAYMENT_MODE: mode,
+            ITEM_AMOUNT: amount,
+            ITEM_DESC: meta.desc,
+            REVENUE_CODE: meta.code,
+            DATE_OBJ: dateObj
+          });
+        }
       });
-    });
 
-    // 1. Bina Butang Tab Kategori
-    function renderSheetTabs() {
-      const container = document.getElementById("sheetTabsContainer");
-      container.innerHTML = "";
-
-      const allBtn = document.createElement("button");
-      allBtn.className = `px-3 py-1 rounded-lg font-semibold transition ${currentSelectedSheet === 'SEMUA' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
-      allBtn.innerText = "Semua Sheet";
-      allBtn.onclick = () => selectSheet("SEMUA");
-      container.appendChild(allBtn);
-
-      SHEET_NAMES.forEach(name => {
-        const btn = document.createElement("button");
-        btn.className = `px-3 py-1 rounded-lg font-semibold transition shrink-0 ${currentSelectedSheet === name ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
-        btn.innerText = name;
-        btn.onclick = () => selectSheet(name);
-        container.appendChild(btn);
-      });
+      return records;
     }
 
-    function selectSheet(name) {
-      currentSelectedSheet = name;
+    // --- INITIALIZATION ---
+    window.onload = function() {
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+      initTheme();
+      initDropzone();
+      loadInitialMultiSheetData();
+      renderSheetTabs();
+      populateSheetFilterDropdown();
+    };
+
+    function loadInitialMultiSheetData() {
+      rawTransactions = generateFullMultiSheet2024Dataset();
+      populateRevenueFilterOptions();
+      applyFilters();
+    }
+
+    function reloadSampleDataset() {
+      loadInitialMultiSheetData();
+      toggleModal('importModal');
+      showToast('Data asal 2024 berjaya dimuatkan semula');
+    }
+
+    // --- MULTI-SHEET TABS & NAVIGATION ---
+    function renderSheetTabs() {
+      const container = document.getElementById('sheetTabsContainer');
+      let html = `
+        <button onclick="selectSheetTab('ALL')" class="px-3.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${selectedSheetFilter === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}">
+          SEMUA SHEET (KONSOLIDASI)
+        </button>
+      `;
+
+      WORKSHEET_NAMES.forEach(name => {
+        const isActive = selectedSheetFilter === name;
+        const activeClass = isActive 
+          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700';
+
+        html += `
+          <button onclick="selectSheetTab('${name}')" class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${activeClass}">
+            ${name}
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function populateSheetFilterDropdown() {
+      const select = document.getElementById('filterSheetCategory');
+      select.innerHTML = '<option value="ALL">Semua Sheet (Konsolidasi)</option>';
+      WORKSHEET_NAMES.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+      select.value = selectedSheetFilter;
+    }
+
+    function selectSheetTab(sheetName) {
+      selectedSheetFilter = sheetName;
+      document.getElementById('filterSheetCategory').value = sheetName;
       renderSheetTabs();
       applyFilters();
     }
 
-    // 2. Data Segera Berasaskan Struktur Fail DBayar
-    function generateMockRealisticData() {
-      const mock = [];
-      const revenueCodes = {
-        "Taksiran": "13001",
-        "Perbadanan Pengurusan": "03018",
-        "Bil Air": "13005",
-        "Sewaan Gerai Pasar": "13003",
-        "Sewaan Hartanah": "13001",
-        "Sewaan Parkir": "13005",
-        "Sewaan Perumahan": "13001",
-        "Terimaan Pelbagai": "03018",
-        "Cagaran": "03018",
-        "Jualan Perumahan": "13001",
-        "Sewaan Pelbagai": "13003"
-      };
-
-      const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-      const modes = ["fpx", "fpx", "fpx", "migs"];
-
-      for (let i = 1; i <= 240; i++) {
-        const sheet = SHEET_NAMES[Math.floor(Math.random() * SHEET_NAMES.length)];
-        const m = months[Math.floor(Math.random() * months.length)];
-        const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-        const hr = String(Math.floor(Math.random() * 24)).padStart(2, '0');
-        const min = String(Math.floor(Math.random() * 60)).padStart(2, '0');
-        const mode = modes[Math.floor(Math.random() * modes.length)];
-
-        let amount = (sheet === "Taksiran") ? (Math.random() * 15000 + 4500) : (Math.random() * 3000 + 100);
-        amount = Math.round(amount * 100) / 100;
-
-        mock.push({
-          mcId: 430000 + i,
-          transId: `24${m}${day}${hr}${min}TRX${i}`,
-          paymentDatetime: `2024-${m}-${day} ${hr}:${min}:00`,
-          paymentMode: mode,
-          paymentTransId: `2401${m}${day}${i}99`,
-          itemAmount: amount,
-          receiptNo: `433424${m}00${1000 + i}`,
-          itemDesc: sheet,
-          sheetName: sheet,
-          revenueCode: revenueCodes[sheet] || "13001",
-          month: parseInt(m, 10)
-        });
-      }
-
-      allTransactions = mock;
-      filteredTransactions = [...allTransactions];
+    function onSheetDropdownChange(val) {
+      selectedSheetFilter = val;
+      renderSheetTabs();
+      applyFilters();
     }
 
-    // 3. Tarik Terus Dari Google Sheets (Live Sync)
-    async function fetchFromGoogleSheets() {
-      const btn = document.getElementById("btnSync");
-      const originalText = btn.innerHTML;
-      btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Memuat...`;
-      lucide.createIcons();
+    // --- LIVE GOOGLE SHEETS SYNC ENGINE ---
+    async function syncAllGoogleSheets() {
+      const syncIcon = document.getElementById('syncIcon');
+      const syncBtn = document.getElementById('syncGoogleSheetsBtn');
+      const badge = document.getElementById('liveStatusBadge');
+      
+      syncIcon.classList.add('animate-spin');
+      syncBtn.disabled = true;
+      showToast('Menghubungi Google Sheets secara langsung...');
 
-      let gathered = [];
-      let successCount = 0;
+      let fetchedCount = 0;
+      const combinedRecords = [];
 
-      // Loop semua sheet kecuali SUM
-      for (const sheetName of SHEET_NAMES) {
-        try {
-          const encodedSheet = encodeURIComponent(sheetName);
-          const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodedSheet}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const csvText = await res.text();
-            const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+      try {
+        const fetchPromises = WORKSHEET_NAMES.map(async (sheetName) => {
+          const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+          try {
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            const csvText = await resp.text();
+            return { sheetName, csvText };
+          } catch (e) {
+            return null;
+          }
+        });
+
+        const results = await Promise.all(fetchPromises);
+        
+        results.forEach(res => {
+          if (res && res.csvText) {
+            const parsed = Papa.parse(res.csvText, { header: true, skipEmptyLines: true });
             if (parsed.data && parsed.data.length > 0) {
-              const rows = normalizeRows(parsed.data, sheetName);
-              gathered = gathered.concat(rows);
-              successCount++;
+              parsed.data.forEach((row, i) => {
+                const norm = normalizeSingleRow(row, i, res.sheetName);
+                if (norm) combinedRecords.push(norm);
+              });
+              fetchedCount++;
             }
           }
-        } catch (err) {
-          console.warn(`Gagal menarik sheet ${sheetName}:`, err);
-        }
-      }
-
-      if (gathered.length > 0) {
-        allTransactions = gathered;
-        filteredTransactions = [...allTransactions];
-        updateDashboardUI();
-        alert(`Berjaya menyegerakkan ${gathered.length} rekod dari ${successCount} sheet Google Sheets!`);
-      } else {
-        alert("Pemberitahuan: Permintaan terus ke Google Sheets dihalang oleh dasar keselamatan pelayar (CORS). Sila muat naik fail Excel (.xlsx) terus melalui butang 'Muat Naik XLSX' untuk memaparkan keseluruhan 100% data sebenar anda!");
-      }
-
-      btn.innerHTML = originalText;
-      lucide.createIcons();
-    }
-
-    // 4. Pengendali Muat Naik XLSX / CSV
-    function handleFileUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        let aggregated = [];
-
-        workbook.SheetNames.forEach(sheetName => {
-          if (sheetName.trim().toUpperCase() === "SUM") return; // Abaikan sheet SUM
-
-          const sheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-          if (json.length > 0) {
-            const cleaned = normalizeRows(json, sheetName);
-            aggregated = aggregated.concat(cleaned);
-          }
         });
 
-        if (aggregated.length > 0) {
-          allTransactions = aggregated;
-          filteredTransactions = [...allTransactions];
-          updateDashboardUI();
-          alert(`Berjaya memuat naik ${aggregated.length} transaksi daripada fail ${file.name}!`);
+        if (combinedRecords.length > 0) {
+          rawTransactions = combinedRecords;
+          badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-ping"></span> Live Synced (${combinedRecords.length} rekod)`;
+          showToast(`Berjaya menyegerak ${combinedRecords.length} transaksi dari Google Sheets!`);
+        } else {
+          showToast('Nota: Google Sheets memerlukan kebenaran awam (Share to Anyone). Data simulasi kekal aktif.');
         }
-      };
-      reader.readAsArrayBuffer(file);
+      } catch (err) {
+        showToast('G-Sheets disekat CORS oleh penyemak imbas. Sila guna fungsi Muat Naik Fail.');
+      } finally {
+        syncIcon.classList.remove('animate-spin');
+        syncBtn.disabled = false;
+        populateRevenueFilterOptions();
+        applyFilters();
+      }
     }
 
-    // Penyelarasan format baris data
-    function normalizeRows(data, sheetName) {
-      return data.map((row, idx) => {
-        const amountStr = String(row["ITEM_AMOUNT"] || row["Jumlah/RM"] || row["AMOUNT"] || "0").replace(/[^0-9.-]+/g, "");
-        const amount = parseFloat(amountStr) || 0;
-        const dt = row["PAYMENT_DATETIME"] || row["CREATED_AT"] || "2024-01-01 10:00:00";
-        const m = dt.includes("-") ? parseInt(dt.split("-")[1], 10) : 1;
+    function normalizeSingleRow(row, idx, defaultSheet = 'Taksiran') {
+      const getField = (keys) => {
+        for (let k of keys) {
+          const match = Object.keys(row).find(x => x.trim().toUpperCase() === k.toUpperCase());
+          if (match && row[match] !== undefined) return row[match];
+        }
+        return '';
+      };
 
-        return {
-          mcId: row["MC ID"] || row["MC_ID"] || idx,
-          transId: row["TRANS_ID"] || `TRX${idx}`,
-          paymentDatetime: dt,
-          paymentMode: (row["PAYMENT_MODE"] || "fpx").toLowerCase().trim(),
-          paymentTransId: row["PAYMENT_TRANS_ID"] || "-",
-          itemAmount: amount,
-          receiptNo: row["DRM_RECEIPT_NO"] || row["RECEIPT_NO"] || `REC${idx}`,
-          itemDesc: row["ITEM_DESC"] || sheetName,
-          sheetName: sheetName,
-          revenueCode: row["REVENUE_CODE"] || "13001",
-          month: isNaN(m) ? 1 : m
-        };
+      const dtStr = getField(['PAYMENT_DATETIME', 'DATETIME', 'DATE', 'TARIKH']);
+      let dateObj = dtStr ? new Date(dtStr) : new Date(2024, 0, (idx % 28) + 1);
+      if (isNaN(dateObj.getTime())) dateObj = new Date(2024, 0, (idx % 28) + 1);
+
+      const amountRaw = getField(['ITEM_AMOUNT', 'AMOUNT', 'JUMLAH', 'TOTAL', '64,800']);
+      const amount = parseFloat(String(amountRaw).replace(/[^0-9.-]+/g, '')) || 0;
+      const revCode = String(getField(['REVENUE_CODE', 'KOD_HASIL', '01001', 'CODE']) || '01001').trim();
+      const mode = String(getField(['PAYMENT_MODE', 'MODE', 'fpx']) || 'FPX').toUpperCase().includes('MIGS') ? 'MIGS' : 'FPX';
+      const desc = getField(['ITEM_DESC', 'KETERANGAN', 'Taksiran', 'DESC']) || defaultSheet;
+      const receiptNo = getField(['DRM_RECEIPT_NO', 'RECEIPT_NO', 'NO_RESIT']) || ('DRM24' + String(idx + 1000));
+      const transId = getField(['TRANS_ID', 'TRANSACTION_ID']) || ('TXN-' + idx);
+      const mcId = getField(['MC_ID', 'MERCHANT_ID']) || 'MC001';
+
+      return {
+        SHEET_NAME: defaultSheet,
+        MC_ID: mcId,
+        TRANS_ID: transId,
+        DRM_RECEIPT_NO: receiptNo,
+        PAYMENT_DATETIME: dateObj.toISOString().slice(0, 19).replace('T', ' '),
+        PAYMENT_MODE: mode,
+        ITEM_AMOUNT: amount,
+        ITEM_DESC: desc,
+        REVENUE_CODE: revCode,
+        DATE_OBJ: dateObj
+      };
+    }
+
+    // --- FILTER & DATA LOGIC ---
+    function populateRevenueFilterOptions() {
+      const select = document.getElementById('filterRevenueCode');
+      const uniqueCodes = [...new Set(rawTransactions.map(t => t.REVENUE_CODE))].sort();
+      
+      select.innerHTML = '<option value="ALL">Semua Kod Hasil</option>';
+      uniqueCodes.forEach(code => {
+        const sample = rawTransactions.find(t => t.REVENUE_CODE === code);
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = `${code} - ${sample ? sample.ITEM_DESC : ''}`;
+        select.appendChild(opt);
       });
     }
 
-    // 5. Penapisan Dinamik
-    function applyFilters(searchKey = "") {
-      const mode = document.getElementById("filterMode").value;
-      const search = (searchKey || document.getElementById("globalSearch").value || "").toLowerCase();
+    function applyFilters() {
+      const monthVal = document.getElementById('filterMonth').value;
+      const modeVal = document.getElementById('filterMode').value;
+      const revCodeVal = document.getElementById('filterRevenueCode').value;
+      const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
 
-      filteredTransactions = allTransactions.filter(t => {
-        const matchSheet = (currentSelectedSheet === "SEMUA") || (t.sheetName === currentSelectedSheet);
-        const matchMode = (mode === "ALL") || (t.paymentMode.toLowerCase() === mode.toLowerCase());
-        const matchSearch = !search || 
-          t.receiptNo.toLowerCase().includes(search) ||
-          t.itemDesc.toLowerCase().includes(search) ||
-          t.revenueCode.toLowerCase().includes(search) ||
-          t.transId.toLowerCase().includes(search);
-
-        return matchSheet && matchMode && matchSearch;
+      filteredTransactions = rawTransactions.filter(item => {
+        if (selectedSheetFilter !== 'ALL' && item.SHEET_NAME !== selectedSheetFilter) {
+          return false;
+        }
+        if (monthVal !== 'ALL') {
+          const itemMonth = (item.DATE_OBJ.getMonth() + 1).toString();
+          if (itemMonth !== monthVal) return false;
+        }
+        if (modeVal !== 'ALL' && item.PAYMENT_MODE !== modeVal) {
+          return false;
+        }
+        if (revCodeVal !== 'ALL' && item.REVENUE_CODE !== revCodeVal) {
+          return false;
+        }
+        if (searchVal) {
+          const matchTarget = `${item.SHEET_NAME} ${item.MC_ID} ${item.TRANS_ID} ${item.DRM_RECEIPT_NO} ${item.ITEM_DESC} ${item.REVENUE_CODE}`.toLowerCase();
+          if (!matchTarget.includes(searchVal)) return false;
+        }
+        return true;
       });
 
       currentPage = 1;
-      updateDashboardUI();
-    }
-
-    // 6. Kemas Kini Visual & KPI
-    function updateDashboardUI() {
-      // Hitung Metrik
-      const totalAmount = filteredTransactions.reduce((acc, cur) => acc + cur.itemAmount, 0);
-      const totalCount = filteredTransactions.length;
-      const avgTicket = totalCount > 0 ? (totalAmount / totalCount) : 0;
-
-      // Kira Mod Dominan
-      const modeCounts = {};
-      filteredTransactions.forEach(t => {
-        modeCounts[t.paymentMode] = (modeCounts[t.paymentMode] || 0) + 1;
-      });
-      const topMode = Object.keys(modeCounts).sort((a,b) => modeCounts[b] - modeCounts[a])[0] || "-";
-
-      // Render Kad Metrik
-      document.getElementById("statTotalAmount").innerText = `RM ${totalAmount.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      document.getElementById("statTotalCount").innerText = totalCount.toLocaleString();
-      document.getElementById("statAvgTicket").innerText = `RM ${avgTicket.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      document.getElementById("statTopMode").innerText = topMode.toUpperCase();
-
-      // Kemas kini Carta
-      updateFinancesChart();
-      updateExpensesChart();
-
-      // Kemas kini Jadual
+      updateKPICards();
+      renderAllCharts();
       renderTable();
     }
 
-    // 7. Pengurusan Carta (Chart.js)
-    function initCharts() {
-      // Line Chart (Finances)
-      const ctxFin = document.getElementById("financesChart").getContext("2d");
-      const gradBlue = ctxFin.createLinearGradient(0, 0, 0, 250);
-      gradBlue.addColorStop(0, "rgba(37, 99, 235, 0.25)");
-      gradBlue.addColorStop(1, "rgba(37, 99, 235, 0.0)");
+    function resetFilters() {
+      selectedSheetFilter = 'ALL';
+      document.getElementById('filterSheetCategory').value = 'ALL';
+      document.getElementById('filterMonth').value = 'ALL';
+      document.getElementById('filterMode').value = 'ALL';
+      document.getElementById('filterRevenueCode').value = 'ALL';
+      document.getElementById('searchInput').value = '';
+      renderSheetTabs();
+      applyFilters();
+      showToast('Semua penapis telah diset semula');
+    }
 
-      financesChartInstance = new Chart(ctxFin, {
+    // --- KPI CARDS COMPUTATION ---
+    function updateKPICards() {
+      const totalCount = filteredTransactions.length;
+      const totalRevenue = filteredTransactions.reduce((acc, curr) => acc + Number(curr.ITEM_AMOUNT || 0), 0);
+      const avgTicket = totalCount > 0 ? totalRevenue / totalCount : 0;
+      const avgPerDay = (totalCount / 365).toFixed(1);
+
+      let fpxCount = 0;
+      let migsCount = 0;
+      const sheetSums = {};
+
+      filteredTransactions.forEach(t => {
+        if (t.PAYMENT_MODE === 'FPX') fpxCount++;
+        else if (t.PAYMENT_MODE === 'MIGS') migsCount++;
+
+        sheetSums[t.SHEET_NAME] = (sheetSums[t.SHEET_NAME] || 0) + Number(t.ITEM_AMOUNT || 0);
+      });
+
+      const topMode = fpxCount >= migsCount ? 'FPX' : 'MIGS';
+      const topModeShare = totalCount > 0 ? (((topMode === 'FPX' ? fpxCount : migsCount) / totalCount) * 100).toFixed(1) : 0;
+
+      let topCategory = '-';
+      let maxCategorySum = 0;
+      for (const [sh, sum] of Object.entries(sheetSums)) {
+        if (sum > maxCategorySum) {
+          maxCategorySum = sum;
+          topCategory = sh;
+        }
+      }
+
+      const formatRM = (val) => 'RM ' + val.toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      document.getElementById('kpiTotalRevenue').textContent = formatRM(totalRevenue);
+      document.getElementById('kpiTotalCount').textContent = totalCount.toLocaleString();
+      document.getElementById('kpiAvgPerDay').textContent = `~ ${avgPerDay}`;
+      document.getElementById('kpiAvgTicket').textContent = formatRM(avgTicket);
+      document.getElementById('kpiTopMode').textContent = topMode;
+      document.getElementById('kpiTopModeShare').textContent = `(${topModeShare}%)`;
+      document.getElementById('kpiTopRevenueCode').textContent = topCategory !== '-' ? topCategory : 'N/A';
+    }
+
+    // --- CHART THEMING & RENDERING ---
+    function getChartThemeColors() {
+      const isDark = document.documentElement.classList.contains('dark');
+      return {
+        text: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? '#1e293b' : '#f1f5f9',
+        tooltipBg: isDark ? '#0f172a' : '#ffffff',
+        tooltipText: isDark ? '#f8fafc' : '#0f172a'
+      };
+    }
+
+    function renderAllCharts() {
+      renderMonthlyTrendChart();
+      renderPaymentModeChart();
+      renderSheetCategoryChart();
+      renderHourlyChart();
+    }
+
+    function renderMonthlyTrendChart() {
+      const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      const monthlyTotals = new Array(12).fill(0);
+      filteredTransactions.forEach(t => {
+        const m = t.DATE_OBJ.getMonth();
+        monthlyTotals[m] += Number(t.ITEM_AMOUNT || 0);
+      });
+
+      const monthNames = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'];
+
+      if (trendChartInstance) trendChartInstance.destroy();
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+      gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+      trendChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'],
-          datasets: [
-            {
-              label: 'Kutipan Sebenar',
-              data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              borderColor: '#2563eb',
-              backgroundColor: gradBlue,
-              fill: true,
-              tension: 0.4,
-              borderWidth: 2.5,
-              pointRadius: 3,
-              pointHoverRadius: 6
-            },
-            {
-              label: 'Sasaran',
-              data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              borderColor: '#f43f5e',
-              borderDash: [5, 5],
-              fill: false,
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 0
-            }
-          ]
+          labels: monthNames,
+          datasets: [{
+            label: 'Kutipan (RM)',
+            data: monthlyTotals,
+            borderColor: '#6366f1',
+            borderWidth: 3,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: '#6366f1',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
         },
         options: {
           responsive: true,
@@ -768,44 +896,63 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: '#0f172a',
-              titleFont: { family: 'Plus Jakarta Sans', size: 12 },
-              bodyFont: { family: 'Plus Jakarta Sans', size: 12 },
-              padding: 10,
-              cornerRadius: 12,
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
               callbacks: {
-                label: (ctx) => ` RM ${ctx.raw.toLocaleString()}`
+                label: (ctx) => ` Kutipan: RM ${ctx.parsed.y.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
               }
             }
           },
           scales: {
-            y: {
-              grid: { color: '#f1f5f9' },
-              ticks: {
-                color: '#94a3b8',
-                font: { size: 10 },
-                callback: (v) => 'RM ' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
-              }
-            },
             x: {
               grid: { display: false },
-              ticks: { color: '#94a3b8', font: { size: 10 } }
+              ticks: { color: theme.text, font: { family: 'Plus Jakarta Sans', size: 11 } }
+            },
+            y: {
+              grid: { color: theme.grid },
+              ticks: {
+                color: theme.text,
+                font: { family: 'Plus Jakarta Sans', size: 11 },
+                callback: (val) => 'RM ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val)
+              }
             }
           }
         }
       });
+    }
 
-      // Doughnut Chart (All Expenses / Pecahan Kategori)
-      const ctxExp = document.getElementById("expensesChart").getContext("2d");
-      expensesChartInstance = new Chart(ctxExp, {
+    function renderPaymentModeChart() {
+      const ctx = document.getElementById('paymentModeChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      let fpxSum = 0;
+      let migsSum = 0;
+      let fpxCount = 0;
+      let migsCount = 0;
+
+      filteredTransactions.forEach(t => {
+        if (t.PAYMENT_MODE === 'FPX') {
+          fpxSum += Number(t.ITEM_AMOUNT || 0);
+          fpxCount++;
+        } else {
+          migsSum += Number(t.ITEM_AMOUNT || 0);
+          migsCount++;
+        }
+      });
+
+      if (paymentChartInstance) paymentChartInstance.destroy();
+
+      paymentChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: ['Taksiran', 'Sewaan', 'Bil Air', 'Lain-lain'],
+          labels: ['FPX', 'MIGS / Kad Kredit'],
           datasets: [{
-            data: [70, 15, 10, 5],
-            backgroundColor: ['#2563eb', '#38bdf8', '#818cf8', '#cbd5e1'],
-            borderWidth: 4,
-            borderColor: '#ffffff'
+            data: [fpxSum, migsSum],
+            backgroundColor: ['#6366f1', '#06b6d4'],
+            borderWidth: 0,
+            hoverOffset: 4
           }]
         },
         options: {
@@ -815,8 +962,98 @@
           plugins: {
             legend: { display: false },
             tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
               callbacks: {
-                label: (ctx) => ` RM ${ctx.raw.toLocaleString()}`
+                label: (ctx) => ` RM ${ctx.parsed.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
+              }
+            }
+          }
+        }
+      });
+
+      const total = fpxSum + migsSum || 1;
+      const fpxPct = ((fpxSum / total) * 100).toFixed(1);
+      const migsPct = ((migsSum / total) * 100).toFixed(1);
+
+      document.getElementById('paymentModeBreakdown').innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> FPX (${fpxCount} txn)</div>
+          <div class="font-bold text-slate-800 dark:text-slate-200">RM ${fpxSum.toLocaleString('ms-MY', { maximumFractionDigits: 0 })} (${fpxPct}%)</div>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> MIGS (${migsCount} txn)</div>
+          <div class="font-bold text-slate-800 dark:text-slate-200">RM ${migsSum.toLocaleString('ms-MY', { maximumFractionDigits: 0 })} (${migsPct}%)</div>
+        </div>
+      `;
+    }
+
+    function renderSheetCategoryChart() {
+      const ctx = document.getElementById('sheetCategoryChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      const sheetTotals = {};
+      WORKSHEET_NAMES.forEach(name => { sheetTotals[name] = 0; });
+      filteredTransactions.forEach(t => {
+        sheetTotals[t.SHEET_NAME] = (sheetTotals[t.SHEET_NAME] || 0) + Number(t.ITEM_AMOUNT || 0);
+      });
+
+      let keys = Object.keys(sheetTotals);
+      if (selectedSheetFilter !== 'ALL') {
+        keys = [selectedSheetFilter];
+      } else {
+        keys = keys.sort((a, b) => sheetTotals[b] - sheetTotals[a]);
+      }
+
+      const amounts = keys.map(k => sheetTotals[k] || 0);
+      const palette = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e', '#3b82f6', '#84cc16', '#a855f7'];
+
+      if (sheetCategoryChartInstance) sheetCategoryChartInstance.destroy();
+
+      sheetCategoryChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: keys,
+          datasets: [{
+            label: 'Kutipan (RM)',
+            data: amounts,
+            backgroundColor: keys.map((_, i) => palette[i % palette.length]),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` Kutipan: RM ${ctx.parsed.y.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { 
+                color: theme.text, 
+                font: { family: 'Plus Jakarta Sans', size: 9 },
+                maxRotation: 45,
+                minRotation: 25
+              }
+            },
+            y: {
+              grid: { color: theme.grid },
+              ticks: {
+                color: theme.text,
+                font: { family: 'Plus Jakarta Sans', size: 10 },
+                callback: (val) => 'RM ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val)
               }
             }
           }
@@ -824,127 +1061,388 @@
       });
     }
 
-    function updateFinancesChart() {
-      const monthlyTotals = new Array(12).fill(0);
+    function renderHourlyChart() {
+      const ctx = document.getElementById('hourlyDistChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      const hours = new Array(24).fill(0);
       filteredTransactions.forEach(t => {
-        if (t.month >= 1 && t.month <= 12) {
-          monthlyTotals[t.month - 1] += t.itemAmount;
+        const h = t.DATE_OBJ.getHours();
+        hours[h]++;
+      });
+
+      const labels = hours.map((_, i) => `${String(i).padStart(2, '0')}:00`);
+
+      if (hourlyChartInstance) hourlyChartInstance.destroy();
+
+      hourlyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Bil. Transaksi',
+            data: hours,
+            backgroundColor: '#f59e0b',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` ${ctx.parsed.y} Transaksi`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { 
+                color: theme.text, 
+                font: { family: 'Plus Jakarta Sans', size: 9 },
+                maxTicksLimit: 12
+              }
+            },
+            y: {
+              grid: { color: theme.grid },
+              ticks: { color: theme.text, font: { family: 'Plus Jakarta Sans', size: 10 } }
+            }
+          }
         }
       });
-
-      // Sasaran (Target) anggaran 1.1x purata
-      const avg = monthlyTotals.reduce((a,b)=>a+b, 0) / 12;
-      const targetTotals = monthlyTotals.map(v => Math.round(avg * 1.08));
-
-      financesChartInstance.data.datasets[0].data = monthlyTotals;
-      financesChartInstance.data.datasets[1].data = targetTotals;
-      financesChartInstance.update();
     }
 
-    function updateExpensesChart() {
-      let taksiranSum = 0;
-      let sewaanSum = 0;
-      let bilAirSum = 0;
-      let lainSum = 0;
+    // --- TABLE RENDERING & PAGINATION ---
+    function renderTable() {
+      const tbody = document.getElementById('transactionTableBody');
+      const countEl = document.getElementById('tableRecordCount');
+      countEl.textContent = filteredTransactions.length.toLocaleString();
 
-      filteredTransactions.forEach(t => {
-        if (t.sheetName === "Taksiran") taksiranSum += t.itemAmount;
-        else if (t.sheetName.includes("Sewaan")) sewaanSum += t.itemAmount;
-        else if (t.sheetName === "Bil Air") bilAirSum += t.itemAmount;
-        else lainSum += t.itemAmount;
+      const sorted = [...filteredTransactions].sort((a, b) => {
+        let valA = a[sortColumn];
+        let valB = b[sortColumn];
+
+        if (sortColumn === 'ITEM_AMOUNT') {
+          valA = Number(valA);
+          valB = Number(valB);
+        } else if (sortColumn === 'PAYMENT_DATETIME') {
+          valA = a.DATE_OBJ.getTime();
+          valB = b.DATE_OBJ.getTime();
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
       });
 
-      expensesChartInstance.data.datasets[0].data = [taksiranSum, sewaanSum, bilAirSum, lainSum];
-      expensesChartInstance.update();
+      const totalItems = sorted.length;
+      const totalPages = Math.ceil(totalItems / pageSize) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
 
-      document.getElementById("miniTaksiranVal").innerText = 'RM ' + (taksiranSum >= 1000 ? (taksiranSum/1000).toFixed(0) + 'k' : taksiranSum.toFixed(0));
-      document.getElementById("miniSewaanVal").innerText = 'RM ' + (sewaanSum >= 1000 ? (sewaanSum/1000).toFixed(0) + 'k' : sewaanSum.toFixed(0));
-      document.getElementById("miniLainVal").innerText = 'RM ' + (lainSum >= 1000 ? (lainSum/1000).toFixed(0) + 'k' : lainSum.toFixed(0));
-    }
-
-    // 8. Render Jadual Transaksi & Paginasi
-    function renderTable() {
-      const tbody = document.getElementById("transactionTableBody");
-      tbody.innerHTML = "";
-
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize;
-      const pageData = filteredTransactions.slice(start, end);
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalItems);
+      const pageData = sorted.slice(startIndex, endIndex);
 
       if (pageData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Tiada rekod transaksi dijumpai.</td></tr>`;
-        document.getElementById("paginationInfo").innerText = "0 rekod";
-        return;
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-8 text-slate-400">
+              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+              Tiada rekod transaksi dijumpai bagi kriteria ini.
+            </td>
+          </tr>
+        `;
+        if (window.lucide) lucide.createIcons();
+      } else {
+        tbody.innerHTML = pageData.map(row => {
+          const modeBadge = row.PAYMENT_MODE === 'FPX' 
+            ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">FPX</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">MIGS</span>';
+
+          return `
+            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+              <td class="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap font-mono text-xs">
+                ${row.PAYMENT_DATETIME}
+              </td>
+              <td class="py-3 px-3 whitespace-nowrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  ${row.SHEET_NAME}
+                </span>
+              </td>
+              <td class="py-3 px-3">
+                <div class="font-bold text-slate-800 dark:text-slate-200">${row.DRM_RECEIPT_NO}</div>
+                <div class="text-[11px] text-slate-400">${row.TRANS_ID} (${row.MC_ID})</div>
+              </td>
+              <td class="py-3 px-3">
+                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800/50">${row.REVENUE_CODE}</span>
+              </td>
+              <td class="py-3 px-3 text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${row.ITEM_DESC}">
+                ${row.ITEM_DESC}
+              </td>
+              <td class="py-3 px-3 text-center whitespace-nowrap">
+                ${modeBadge}
+              </td>
+              <td class="py-3 px-3 text-right font-bold text-slate-900 dark:text-white font-mono">
+                RM ${Number(row.ITEM_AMOUNT).toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
+          `;
+        }).join('');
       }
 
-      pageData.forEach(t => {
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-slate-50/80 transition";
-        tr.innerHTML = `
-          <td class="py-3 px-3 flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-[10px]">
-              ${t.itemDesc.substring(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <p class="font-semibold text-slate-800">${t.itemDesc}</p>
-              <p class="text-[10px] text-slate-400 font-mono">${t.receiptNo}</p>
-            </div>
-          </td>
-          <td class="py-3 px-3">
-            <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium text-[11px]">${t.sheetName}</span>
-          </td>
-          <td class="py-3 px-3 font-mono text-slate-500">${t.revenueCode}</td>
-          <td class="py-3 px-3 text-slate-400 font-mono text-[11px]">${t.paymentDatetime}</td>
-          <td class="py-3 px-3 text-right font-bold text-slate-900">RM ${t.itemAmount.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-          <td class="py-3 px-3 text-center">
-            <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-              <span class="w-1 h-1 rounded-full bg-emerald-500"></span> ${t.paymentMode.toUpperCase()}
-            </span>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+      document.getElementById('paginationInfo').textContent = 
+        totalItems === 0 
+          ? 'Menunjukkan 0 rekod' 
+          : `Menunjukkan ${startIndex + 1} hingga ${endIndex} daripada ${totalItems.toLocaleString()} rekod`;
 
-      document.getElementById("paginationInfo").innerText = `Memaparkan ${start + 1} - ${Math.min(end, filteredTransactions.length)} daripada ${filteredTransactions.length} rekod`;
-      document.getElementById("btnPrevPage").disabled = currentPage === 1;
-      document.getElementById("btnNextPage").disabled = end >= filteredTransactions.length;
+      renderPaginationButtons(totalPages);
     }
 
-    function changePage(direction) {
-      currentPage += direction;
+    function renderPaginationButtons(totalPages) {
+      const controls = document.getElementById('paginationControls');
+      let html = '';
+
+      html += `
+        <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          &larr;
+        </button>
+      `;
+
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, currentPage + 2);
+
+      for (let p = start; p <= end; p++) {
+        const active = p === currentPage;
+        html += `
+          <button onclick="goToPage(${p})" class="px-3 py-1 rounded-lg text-xs font-semibold ${active ? 'bg-indigo-600 text-white' : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'} transition">
+            ${p}
+          </button>
+        `;
+      }
+
+      html += `
+        <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          &rarr;
+        </button>
+      `;
+
+      controls.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
+      if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderTable();
+      }
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
+      currentPage = 1;
       renderTable();
     }
 
-    // 9. Semakan Resit Pantas (Quick Transfer Widget)
-    function checkQuickReceipt() {
-      const q = document.getElementById("quickReceiptInput").value.trim().toLowerCase();
-      if (!q) {
-        alert("Sila masukkan nombor resit!");
-        return;
-      }
-      const found = allTransactions.find(t => t.receiptNo.toLowerCase().includes(q) || t.transId.toLowerCase().includes(q));
-      if (found) {
-        alert(`Resit Dijumpai:\n\nItem: ${found.itemDesc}\nSheet: ${found.sheetName}\nAmaun: RM ${found.itemAmount.toLocaleString()}\nTarikh: ${found.paymentDatetime}\nKaedah: ${found.paymentMode.toUpperCase()}`);
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
-        alert("Nombor resit tidak dijumpai dalam rekod semasa.");
+        sortColumn = column;
+        sortDirection = 'desc';
       }
+      renderTable();
     }
 
-    // 10. Eksport ke CSV
-    function exportToCSV() {
+    // --- EXPORT TO CSV ---
+    function exportCurrentViewCSV() {
       if (filteredTransactions.length === 0) {
-        alert("Tiada data untuk dieksport.");
+        showToast('Tiada rekod untuk dieksport.');
         return;
       }
-      const csv = Papa.unparse(filteredTransactions);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `DBAYAR_EXPORT_${new Date().toISOString().slice(0,10)}.csv`);
+
+      const headers = ['Sheet/Kategori', 'Tarikh & Masa', 'No Resit', 'ID Transaksi', 'MC ID', 'Kod Hasil', 'Keterangan Item', 'Kaedah Bayaran', 'Jumlah (RM)'];
+      const rows = filteredTransactions.map(t => [
+        t.SHEET_NAME,
+        t.PAYMENT_DATETIME,
+        t.DRM_RECEIPT_NO,
+        t.TRANS_ID,
+        t.MC_ID,
+        t.REVENUE_CODE,
+        `"${t.ITEM_DESC.replace(/"/g, '""')}"`,
+        t.PAYMENT_MODE,
+        Number(t.ITEM_AMOUNT).toFixed(2)
+      ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `DBayar_Analytics_Export_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      showToast('Fail CSV berjaya dimuat turun!');
+    }
+
+    // --- FILE UPLOAD & DROPZONE ---
+    function initDropzone() {
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+
+      dropZone.addEventListener('click', () => fileInput.click());
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50/10');
+      });
+
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/10');
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/10');
+        if (e.dataTransfer.files.length) {
+          processUploadedFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    function handleFileSelect(e) {
+      if (e.target.files.length) {
+        processUploadedFile(e.target.files[0]);
+      }
+    }
+
+    function processUploadedFile(file) {
+      const fileName = file.name.toLowerCase();
+      showToast(`Memproses fail: ${file.name}...`);
+
+      const reader = new FileReader();
+
+      if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        reader.onload = function(e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const allUploadedRecords = [];
+
+            workbook.SheetNames.forEach(sheetName => {
+              if (sheetName.trim().toUpperCase() === 'SUM') return; // abaikan sheet SUM
+              const worksheet = workbook.Sheets[sheetName];
+              const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+              json.forEach((row, idx) => {
+                const norm = normalizeSingleRow(row, idx, sheetName);
+                if (norm) allUploadedRecords.push(norm);
+              });
+            });
+
+            if (allUploadedRecords.length > 0) {
+              rawTransactions = allUploadedRecords;
+              populateRevenueFilterOptions();
+              applyFilters();
+              toggleModal('importModal');
+              showToast(`Berjaya memuatkan ${allUploadedRecords.length} transaksi daripada ${workbook.SheetNames.length - 1} sheet!`);
+            } else {
+              showToast('Tiada rekod ditemui dalam fail.');
+            }
+          } catch (err) {
+            showToast('Ralat memproses fail Excel.');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else if (fileName.endsWith('.csv')) {
+        reader.onload = function(e) {
+          parseCSVText(e.target.result);
+        };
+        reader.readAsText(file);
+      } else {
+        showToast('Format fail tidak disokong. Sila guna .xlsx, .xls atau .csv.');
+      }
+    }
+
+    function processPastedCSV() {
+      const val = document.getElementById('rawCsvInput').value.trim();
+      if (!val) {
+        showToast('Sila masukkan teks data CSV!');
+        return;
+      }
+      parseCSVText(val);
+      toggleModal('importModal');
+    }
+
+    function parseCSVText(csvString) {
+      Papa.parse(csvString, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          if (results.data && results.data.length > 0) {
+            const parsedRows = [];
+            results.data.forEach((row, i) => {
+              const norm = normalizeSingleRow(row, i, selectedSheetFilter !== 'ALL' ? selectedSheetFilter : 'Taksiran');
+              if (norm) parsedRows.push(norm);
+            });
+            rawTransactions = parsedRows;
+            populateRevenueFilterOptions();
+            applyFilters();
+            showToast(`Berjaya memuatkan ${parsedRows.length} rekod CSV!`);
+          } else {
+            showToast('Tiada data sah dijumpai dalam teks CSV.');
+          }
+        },
+        error: function(err) {
+          showToast('Ralat membaca teks CSV.');
+        }
+      });
+    }
+
+    // --- THEME TOGGLE & MODALS ---
+    function initTheme() {
+      const isDark = localStorage.getItem('theme') !== 'light';
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      updateThemeIcon(isDark);
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon(isDark);
+      renderAllCharts();
+    }
+
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('themeIcon');
+      if (icon) {
+        icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+
+    function toggleModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.toggle('hidden');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
     }
   </script>
 </body>
