@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="ms" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DBayar 2024 Analytics Dashboard</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            darkBg: '#0b0f19',
+            darkCard: '#111827',
+            darkBorder: '#1f2937'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- SheetJS (xlsx) for parsing uploaded excel files -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #6366f1;
+      border-radius: 9999px;
+    }
+    .glassmorphism {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#090d16] text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200 antialiased">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-darkCard/80 glassmorphism transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">DBayar Analytics</h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+              Kutipan 2024
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Sistem Pemantauan Hasil & Transaksi Terimaan Elektronik</p>
+        </div>
+      </div>
+
+      <!-- Action Tools -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Import Data Button -->
+        <button onclick="toggleModal('importModal')" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/50 transition-all">
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Muat Naik Data</span>
+        </button>
+
+        <!-- Export CSV Button -->
+        <button onclick="exportCurrentViewCSV()" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Eksport CSV</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" title="Tukar Tema">
+          <i id="themeIcon" data-lucide="sun" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- FILTERS TOOLBAR -->
+    <section class="p-4 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all">
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        
+        <!-- Left: Filter dropdowns -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+          <!-- Month Filter -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Bulan</label>
+            <div class="relative">
+              <select id="filterMonth" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="ALL">Semua Bulan (2024)</option>
+                <option value="1">Januari 2024</option>
+                <option value="2">Februari 2024</option>
+                <option value="3">Mac 2024</option>
+                <option value="4">April 2024</option>
+                <option value="5">Mei 2024</option>
+                <option value="6">Jun 2024</option>
+                <option value="7">Julai 2024</option>
+                <option value="8">Ogos 2024</option>
+                <option value="9">September 2024</option>
+                <option value="10">Oktober 2024</option>
+                <option value="11">November 2024</option>
+                <option value="12">Disember 2024</option>
+              </select>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Payment Mode Filter -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kaedah Bayaran</label>
+            <div class="relative">
+              <select id="filterMode" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="ALL">Semua Kaedah (FPX & MIGS)</option>
+                <option value="FPX">FPX (Online Banking)</option>
+                <option value="MIGS">MIGS / Kad Kredit</option>
+              </select>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Revenue Code Filter -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kod Hasil</label>
+            <div class="relative">
+              <select id="filterRevenueCode" onchange="applyFilters()" class="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="ALL">Semua Kod Hasil</option>
+                <!-- Populated dynamically via JS -->
+              </select>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Search & Reset -->
+        <div class="flex items-end gap-2 pt-2 lg:pt-0">
+          <div class="relative w-full sm:w-64">
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Carian Terperinci</label>
+            <input type="text" id="searchInput" oninput="applyFilters()" placeholder="No Resit, Item, MC ID..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-8 pointer-events-none"></i>
+          </div>
+          <button onclick="resetFilters()" title="Set Semula Semua Penapis" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- EXECUTIVE KPI CARDS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- KPI 1: Jumlah Kutipan -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Jumlah Kutipan</span>
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div id="kpiTotalRevenue" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">RM 0.00</div>
+          <div class="flex items-center text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5 mr-1"></i>
+            Kutipan Terimaan Sah 2024
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI 2: Bilangan Transaksi -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-emerald-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Jumlah Transaksi</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div id="kpiTotalCount" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">0</div>
+          <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
+            <span id="kpiAvgPerDay" class="font-medium text-slate-700 dark:text-slate-300">~ 0</span> &nbsp;transaksi / hari
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI 3: Purata Nilai (Ticket Size) -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-cyan-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Purata Transaksi</span>
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+            <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div id="kpiAvgTicket" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">RM 0.00</div>
+          <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
+            Nisbah Purata per Resit
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI 4: Mod Pembayaran Utama & Kod Dominan -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-purple-500/40 transition">
+        <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Saluran & Kod Tertinggi</span>
+          <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <i data-lucide="pie-chart" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiTopMode" class="text-lg font-bold text-slate-900 dark:text-white">FPX</span>
+            <span id="kpiTopModeShare" class="text-xs font-medium text-purple-600 dark:text-purple-400">(0%)</span>
+          </div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
+            Kod Terbanyak: <span id="kpiTopRevenueCode" class="font-semibold text-slate-700 dark:text-slate-200">-</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CHARTS SECTION - ROW 1 -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Trend Bulanan (2 Cols) -->
+      <div class="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-4 h-4 text-indigo-500"></i>
+              Trend Kutipan Bulanan (2024)
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Kutipan kumulatif (RM) dari Januari hingga Disember</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="flex items-center gap-1.5 text-xs text-slate-500">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Kutipan (RM)
+            </span>
+          </div>
+        </div>
+        <div class="relative h-72 w-full">
+          <canvas id="monthlyTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Pecahan Kaedah Bayaran FPX vs MIGS (1 Col) -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="credit-card" class="w-4 h-4 text-cyan-500"></i>
+              Saluran Bayaran
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">FPX vs MIGS (Kad Kredit)</p>
+          </div>
+        </div>
+        <div class="relative h-56 w-full flex items-center justify-center">
+          <canvas id="paymentModeChart"></canvas>
+        </div>
+        <div id="paymentModeBreakdown" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CHARTS SECTION - ROW 2 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Pecahan Mengikut Kod Hasil -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i>
+              Kutipan Mengikut Kod Hasil
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Sumbangan setiap kod hasil (Revenue Code) dalam kutipan</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="revenueCodeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Taburan Waktu Pembayaran (Waktu Puncak) -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
+              Waktu Transaksi Puncak
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Taburan bilangan transaksi mengikut jam dalam sehari</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="hourlyDistChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- DETAILED TRANSACTION TABLE SECTION -->
+    <section class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-indigo-500"></i>
+            Log Transaksi Kutipan DBayar
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Senarai transaksi yang sepadan dengan kriteria tapisan semasa (<span id="tableRecordCount">0</span> rekod)</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">Paparan Baris:</span>
+          <select id="pageSizeSelect" onchange="changePageSize()" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2 py-1 text-slate-700 dark:text-slate-300 focus:outline-none">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="overflow-x-auto my-3">
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/50">
+              <th class="py-3 px-3 font-semibold cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('PAYMENT_DATETIME')">
+                Tarikh & Masa <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
+              </th>
+              <th class="py-3 px-3 font-semibold">No. Resit / ID</th>
+              <th class="py-3 px-3 font-semibold cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('REVENUE_CODE')">
+                Kod Hasil <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
+              </th>
+              <th class="py-3 px-3 font-semibold">Keterangan Item</th>
+              <th class="py-3 px-3 font-semibold text-center">Kaedah</th>
+              <th class="py-3 px-3 font-semibold text-right cursor-pointer hover:text-indigo-500 transition" onclick="sortTable('ITEM_AMOUNT')">
+                Jumlah (RM) <i data-lucide="arrow-up-down" class="inline w-3 h-3 ml-1"></i>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+        <div id="paginationInfo">Menunjukkan 1 hingga 25 daripada 0 rekod</div>
+        <div class="flex items-center gap-1" id="paginationControls">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: UPLOAD / IMPORT FILE -->
+  <div id="importModal" class="fixed inset-0 z-50 hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-darkCard w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl relative space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-base">Muat Naik Data DBayar</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Sokong format CSV atau Excel (.xlsx / .xls)</p>
+          </div>
+        </div>
+        <button onclick="toggleModal('importModal')" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- File Dropzone -->
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 dark:bg-slate-900/50">
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileSelect(event)" />
+        <i data-lucide="cloud-upload" class="w-10 h-10 mx-auto text-indigo-500 mb-2"></i>
+        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Klik untuk pilih fail atau heret fail ke sini</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Fail `TERIMAAN_DBAYAR_2024 FINAL.xlsx` atau eksport CSV</p>
+      </div>
+
+      <!-- Or Paste CSV Data directly -->
+      <div class="space-y-1">
+        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Atau Tampal Data CSV / Pautan</label>
+        <textarea id="rawCsvInput" rows="3" placeholder="MC ID,TRANS_ID,PAYMENT_DATETIME,PAYMENT_MODE,ITEM_AMOUNT,ITEM_DESC,REVENUE_CODE..." class="w-full text-xs font-mono p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="reloadSampleDataset()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          Pulihkan Data Sampel Asal (2024)
+        </button>
+        <div class="flex gap-2">
+          <button onclick="toggleModal('importModal')" class="px-4 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">Batal</button>
+          <button onclick="processPastedCSV()" class="px-4 py-2 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30">Proses Teks CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-sm">
+    <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+    <span id="toastMsg">Mesej status</span>
+  </div>
+
+  <!-- APPLICATION LOGIC SCRIPT -->
+  <script>
+    // --- STATE MANAGEMENT ---
+    let rawTransactions = [];
+    let filteredTransactions = [];
+    let currentPage = 1;
+    let pageSize = 25;
+    let sortColumn = 'PAYMENT_DATETIME';
+    let sortDirection = 'desc';
+
+    // Chart instances
+    let trendChartInstance = null;
+    let paymentChartInstance = null;
+    let revenueCodeChartInstance = null;
+    let hourlyChartInstance = null;
+
+    // --- REALISTIC 2024 DATA GENERATOR BASED ON DBAYAR ARCHITECTURE ---
+    // Mimics the exact columns from TERIMAAN_DBAYAR_2024 FINAL.xlsx
+    function generateRealisticDBayarDataset() {
+      const records = [];
+      const revenueCodes = [
+        { code: '13001', desc: 'Cukai Taksiran Am / Semasa', weight: 45, min: 120, max: 2400 },
+        { code: '13005', desc: 'Tunggakan Cukai Taksiran', weight: 18, min: 250, max: 4800 },
+        { code: '13003', desc: 'Cukai Harta Komersial / Industri', weight: 12, min: 500, max: 9500 },
+        { code: '03018', desc: 'Sewaan Gerai & Premis Perniagaan', weight: 15, min: 80, max: 1200 },
+        { code: '74011', desc: 'Fi Lesen & Permit Perniagaan', weight: 7, min: 50, max: 600 },
+        { code: '81002', desc: 'Pelbagai Kompaun & Denda Trafik/Bangunan', weight: 3, min: 30, max: 300 }
+      ];
+
+      // Expanded cumulative weights for sampling
+      const weightedList = [];
+      revenueCodes.forEach(r => {
+        for (let i = 0; i < r.weight; i++) weightedList.push(r);
+      });
+
+      // Simulation counts: generate approx 1,450 realistic transactions spanning Jan to Dec 2024
+      const months = [
+        { m: 1, count: 185 }, // High tax season peak Jan/Feb
+        { m: 2, count: 210 },
+        { m: 3, count: 85 },
+        { m: 4, count: 70 },
+        { m: 5, count: 80 },
+        { m: 6, count: 95 },
+        { m: 7, count: 140 }, // Second peak Jul/Aug
+        { m: 8, count: 190 },
+        { m: 9, count: 75 },
+        { m: 10, count: 65 },
+        { m: 11, count: 80 },
+        { m: 12, count: 125 } // Year end push
+      ];
+
+      let runningTransId = 2024000100;
+
+      months.forEach(({ m, count }) => {
+        const daysInMonth = new Date(2024, m, 0).getDate();
+        for (let i = 0; i < count; i++) {
+          runningTransId++;
+          const day = Math.floor(Math.random() * daysInMonth) + 1;
+          
+          // Realistic hourly distribution (more transactions during 9am - 4pm and 8pm - 10pm)
+          const hourProb = Math.random();
+          let hour;
+          if (hourProb < 0.6) {
+            hour = Math.floor(Math.random() * 8) + 9; // 9:00 - 16:59
+          } else if (hourProb < 0.85) {
+            hour = Math.floor(Math.random() * 4) + 19; // 19:00 - 22:59
+          } else {
+            hour = Math.floor(Math.random() * 24);
+          }
+          const minute = Math.floor(Math.random() * 60);
+          const second = Math.floor(Math.random() * 60);
+
+          const dateObj = new Date(2024, m - 1, day, hour, minute, second);
+          const formattedDate = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+
+          // Payment mode: 74% FPX, 26% MIGS (Credit/Debit Card)
+          const mode = Math.random() < 0.74 ? 'FPX' : 'MIGS';
+
+          // Pick random revenue profile based on weights
+          const revProfile = weightedList[Math.floor(Math.random() * weightedList.length)];
+          const amount = +(Math.random() * (revProfile.max - revProfile.min) + revProfile.min).toFixed(2);
+
+          const mcId = 'MC' + String(Math.floor(Math.random() * 80) + 10).padStart(3, '0');
+          const receiptNo = 'DRM24' + String(runningTransId).slice(-6);
+
+          records.push({
+            MC_ID: mcId,
+            TRANS_ID: 'TXN-' + runningTransId,
+            DRM_RECEIPT_NO: receiptNo,
+            PAYMENT_DATETIME: formattedDate,
+            PAYMENT_MODE: mode,
+            ITEM_AMOUNT: amount,
+            ITEM_DESC: revProfile.desc,
+            REVENUE_CODE: revProfile.code,
+            DATE_OBJ: dateObj
+          });
+        }
+      });
+
+      return records;
+    }
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+      lucide.createIcons();
+      initTheme();
+      initDropzone();
+      loadInitialData();
+    };
+
+    function loadInitialData() {
+      rawTransactions = generateRealisticDBayarDataset();
+      populateRevenueFilterOptions();
+      applyFilters();
+      showToast('Data analitik 2024 sedia dimuatkan!');
+    }
+
+    function reloadSampleDataset() {
+      loadInitialData();
+      toggleModal('importModal');
+    }
+
+    // --- THEME TOGGLE ---
+    function initTheme() {
+      const isDark = localStorage.getItem('dbayar_theme') === 'dark' || 
+                     (!('dbayar_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      updateThemeIcon();
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('dbayar_theme', isDark ? 'dark' : 'light');
+      updateThemeIcon();
+      // Re-render charts for theme color contrast
+      renderAllCharts();
+    }
+
+    function updateThemeIcon() {
+      const icon = document.getElementById('themeIcon');
+      const isDark = document.documentElement.classList.contains('dark');
+      icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      lucide.createIcons();
+    }
+
+    // --- FILTER & DATA LOGIC ---
+    function populateRevenueFilterOptions() {
+      const select = document.getElementById('filterRevenueCode');
+      const uniqueCodes = [...new Set(rawTransactions.map(t => t.REVENUE_CODE))].sort();
+      
+      // Preserve first "Semua" option
+      select.innerHTML = '<option value="ALL">Semua Kod Hasil</option>';
+      uniqueCodes.forEach(code => {
+        const sample = rawTransactions.find(t => t.REVENUE_CODE === code);
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = `${code} - ${sample ? sample.ITEM_DESC : ''}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function applyFilters() {
+      const monthVal = document.getElementById('filterMonth').value;
+      const modeVal = document.getElementById('filterMode').value;
+      const revCodeVal = document.getElementById('filterRevenueCode').value;
+      const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+
+      filteredTransactions = rawTransactions.filter(item => {
+        // Month filter
+        if (monthVal !== 'ALL') {
+          const itemMonth = (item.DATE_OBJ.getMonth() + 1).toString();
+          if (itemMonth !== monthVal) return false;
+        }
+
+        // Mode filter
+        if (modeVal !== 'ALL') {
+          if (item.PAYMENT_MODE !== modeVal) return false;
+        }
+
+        // Revenue Code filter
+        if (revCodeVal !== 'ALL') {
+          if (item.REVENUE_CODE !== revCodeVal) return false;
+        }
+
+        // Search text
+        if (searchVal) {
+          const matchTarget = `${item.MC_ID} ${item.TRANS_ID} ${item.DRM_RECEIPT_NO} ${item.ITEM_DESC} ${item.REVENUE_CODE}`.toLowerCase();
+          if (!matchTarget.includes(searchVal)) return false;
+        }
+
+        return true;
+      });
+
+      currentPage = 1;
+      updateKPICards();
+      renderAllCharts();
+      renderTable();
+    }
+
+    function resetFilters() {
+      document.getElementById('filterMonth').value = 'ALL';
+      document.getElementById('filterMode').value = 'ALL';
+      document.getElementById('filterRevenueCode').value = 'ALL';
+      document.getElementById('searchInput').value = '';
+      applyFilters();
+      showToast('Semua penapis telah ditetapkan semula');
+    }
+
+    // --- KPI CARDS COMPUTATION ---
+    function updateKPICards() {
+      const totalCount = filteredTransactions.length;
+      const totalRevenue = filteredTransactions.reduce((acc, curr) => acc + Number(curr.ITEM_AMOUNT || 0), 0);
+      const avgTicket = totalCount > 0 ? totalRevenue / totalCount : 0;
+
+      // Count per day approximation
+      const avgPerDay = (totalCount / 365).toFixed(1);
+
+      // Payment modes share
+      let fpxCount = 0;
+      let migsCount = 0;
+      const revCodeCounts = {};
+
+      filteredTransactions.forEach(t => {
+        if (t.PAYMENT_MODE === 'FPX') fpxCount++;
+        else if (t.PAYMENT_MODE === 'MIGS') migsCount++;
+
+        revCodeCounts[t.REVENUE_CODE] = (revCodeCounts[t.REVENUE_CODE] || 0) + 1;
+      });
+
+      const topMode = fpxCount >= migsCount ? 'FPX' : 'MIGS';
+      const topModeShare = totalCount > 0 ? (((topMode === 'FPX' ? fpxCount : migsCount) / totalCount) * 100).toFixed(1) : 0;
+
+      // Top revenue code
+      let topCode = '-';
+      let maxCodeCount = 0;
+      for (const [code, count] of Object.entries(revCodeCounts)) {
+        if (count > maxCodeCount) {
+          maxCodeCount = count;
+          topCode = code;
+        }
+      }
+
+      // Format currency
+      const formatRM = (val) => 'RM ' + val.toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      document.getElementById('kpiTotalRevenue').textContent = formatRM(totalRevenue);
+      document.getElementById('kpiTotalCount').textContent = totalCount.toLocaleString();
+      document.getElementById('kpiAvgPerDay').textContent = `~ ${avgPerDay}`;
+      document.getElementById('kpiAvgTicket').textContent = formatRM(avgTicket);
+      document.getElementById('kpiTopMode').textContent = topMode;
+      document.getElementById('kpiTopModeShare').textContent = `(${topModeShare}%)`;
+      document.getElementById('kpiTopRevenueCode').textContent = topCode !== '-' ? topCode : 'N/A';
+    }
+
+    // --- CHART RENDERING ---
+    function isDarkMode() {
+      return document.documentElement.classList.contains('dark');
+    }
+
+    function getChartThemeColors() {
+      const dark = isDarkMode();
+      return {
+        text: dark ? '#94a3b8' : '#64748b',
+        grid: dark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+        tooltipBg: dark ? '#1e293b' : '#0f172a',
+        tooltipText: '#ffffff'
+      };
+    }
+
+    function renderAllCharts() {
+      renderMonthlyTrendChart();
+      renderPaymentModeChart();
+      renderRevenueCodeChart();
+      renderHourlyChart();
+    }
+
+    // 1. Monthly Trend Chart (Area / Line)
+    function renderMonthlyTrendChart() {
+      const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      // Aggregate revenue per month (1 to 12)
+      const monthlySum = new Array(12).fill(0);
+      filteredTransactions.forEach(t => {
+        const m = t.DATE_OBJ.getMonth();
+        monthlySum[m] += Number(t.ITEM_AMOUNT || 0);
+      });
+
+      const monthNames = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'];
+
+      // Gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.45)');
+      gradient.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
+
+      if (trendChartInstance) trendChartInstance.destroy();
+
+      trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: monthNames,
+          datasets: [{
+            label: 'Kutipan Bulanan (RM)',
+            data: monthlySum,
+            borderColor: '#6366f1',
+            borderWidth: 3,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: '#6366f1',
+            pointHoverRadius: 6,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` Kutipan: RM ${ctx.parsed.y.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: theme.text, font: { family: 'Plus Jakarta Sans', size: 11 } }
+            },
+            y: {
+              grid: { color: theme.grid },
+              ticks: {
+                color: theme.text,
+                font: { family: 'Plus Jakarta Sans', size: 11 },
+                callback: (val) => 'RM ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Payment Mode Doughnut
+    function renderPaymentModeChart() {
+      const ctx = document.getElementById('paymentModeChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      let fpxSum = 0;
+      let migsSum = 0;
+      let fpxCount = 0;
+      let migsCount = 0;
+
+      filteredTransactions.forEach(t => {
+        const amt = Number(t.ITEM_AMOUNT || 0);
+        if (t.PAYMENT_MODE === 'FPX') {
+          fpxSum += amt;
+          fpxCount++;
+        } else {
+          migsSum += amt;
+          migsCount++;
+        }
+      });
+
+      const totalRevenue = fpxSum + migsSum;
+      const fpxPercent = totalRevenue > 0 ? ((fpxSum / totalRevenue) * 100).toFixed(1) : 0;
+      const migsPercent = totalRevenue > 0 ? ((migsSum / totalRevenue) * 100).toFixed(1) : 0;
+
+      if (paymentChartInstance) paymentChartInstance.destroy();
+
+      paymentChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['FPX (Online Banking)', 'MIGS (Kad Kredit/Debit)'],
+          datasets: [{
+            data: [fpxSum, migsSum],
+            backgroundColor: ['#6366f1', '#06b6d4'],
+            hoverOffset: 6,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: theme.text,
+                boxWidth: 12,
+                font: { family: 'Plus Jakarta Sans', size: 11 }
+              }
+            },
+            tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` RM ${ctx.parsed.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
+              }
+            }
+          }
+        }
+      });
+
+      // Update Breakdown details below chart
+      const container = document.getElementById('paymentModeBreakdown');
+      container.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> FPX:</span>
+          <span class="font-bold text-slate-800 dark:text-slate-200">RM ${fpxSum.toLocaleString('ms-MY', { minimumFractionDigits: 2 })} (${fpxPercent}%)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-500"></span> MIGS:</span>
+          <span class="font-bold text-slate-800 dark:text-slate-200">RM ${migsSum.toLocaleString('ms-MY', { minimumFractionDigits: 2 })} (${migsPercent}%)</span>
+        </div>
+      `;
+    }
+
+    // 3. Revenue Code Distribution (Horizontal Bar / Bar)
+    function renderRevenueCodeChart() {
+      const ctx = document.getElementById('revenueCodeChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      const codeTotals = {};
+      filteredTransactions.forEach(t => {
+        codeTotals[t.REVENUE_CODE] = (codeTotals[t.REVENUE_CODE] || 0) + Number(t.ITEM_AMOUNT || 0);
+      });
+
+      // Sort descending by amount
+      const sortedCodes = Object.keys(codeTotals).sort((a, b) => codeTotals[b] - codeTotals[a]);
+      const amounts = sortedCodes.map(c => codeTotals[c]);
+
+      const colors = ['#6366f1', '#10b981', '#06b6d4', '#f59e0b', '#ec4899', '#8b5cf6'];
+
+      if (revenueCodeChartInstance) revenueCodeChartInstance.destroy();
+
+      revenueCodeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedCodes.map(c => `Kod ${c}`),
+          datasets: [{
+            label: 'Jumlah (RM)',
+            data: amounts,
+            backgroundColor: sortedCodes.map((_, i) => colors[i % colors.length]),
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` Kutipan: RM ${ctx.parsed.y.toLocaleString('ms-MY', { minimumFractionDigits: 2 })}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: theme.text, font: { family: 'Plus Jakarta Sans', size: 11 } }
+            },
+            y: {
+              grid: { color: theme.grid },
+              ticks: {
+                color: theme.text,
+                font: { family: 'Plus Jakarta Sans', size: 11 },
+                callback: (val) => 'RM ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 4. Hourly Distribution Bar Chart
+    function renderHourlyChart() {
+      const ctx = document.getElementById('hourlyDistChart').getContext('2d');
+      const theme = getChartThemeColors();
+
+      const hoursCount = new Array(24).fill(0);
+      filteredTransactions.forEach(t => {
+        const hour = t.DATE_OBJ.getHours();
+        hoursCount[hour]++;
+      });
+
+      const labels = hoursCount.map((_, i) => `${String(i).padStart(2, '0')}:00`);
+
+      if (hourlyChartInstance) hourlyChartInstance.destroy();
+
+      hourlyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Bil. Transaksi',
+            data: hoursCount,
+            backgroundColor: '#f59e0b',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: theme.tooltipBg,
+              titleColor: theme.tooltipText,
+              bodyColor: theme.tooltipText,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` Transaksi: ${ctx.parsed.y} rekod`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                color: theme.text,
+                maxRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 8,
+                font: { family: 'Plus Jakarta Sans', size: 10 }
+              }
+            },
+            y: {
+              grid: { color: theme.grid },
+              ticks: { color: theme.text, font: { family: 'Plus Jakarta Sans', size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // --- DATA TABLE SORTING & PAGINATION ---
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = column;
+        sortDirection = 'desc';
+      }
+      renderTable();
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
+      currentPage = 1;
+      renderTable();
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('transactionTableBody');
+      const countEl = document.getElementById('tableRecordCount');
+      countEl.textContent = filteredTransactions.length.toLocaleString();
+
+      // Sort
+      const sorted = [...filteredTransactions].sort((a, b) => {
+        let valA = a[sortColumn];
+        let valB = b[sortColumn];
+
+        if (sortColumn === 'ITEM_AMOUNT') {
+          valA = Number(valA);
+          valB = Number(valB);
+        } else if (sortColumn === 'PAYMENT_DATETIME') {
+          valA = a.DATE_OBJ.getTime();
+          valB = b.DATE_OBJ.getTime();
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      // Pagination slice
+      const totalItems = sorted.length;
+      const totalPages = Math.ceil(totalItems / pageSize) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalItems);
+      const pageData = sorted.slice(startIndex, endIndex);
+
+      // Render rows
+      if (pageData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-8 text-slate-400">
+              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+              Tiada rekod ditemui mengikut tapisan semasa.
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+      } else {
+        tbody.innerHTML = pageData.map(row => {
+          const modeBadge = row.PAYMENT_MODE === 'FPX' 
+            ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">FPX</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">MIGS</span>';
+
+          return `
+            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+              <td class="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap font-mono text-xs">
+                ${row.PAYMENT_DATETIME}
+              </td>
+              <td class="py-3 px-3">
+                <div class="font-bold text-slate-800 dark:text-slate-200">${row.DRM_RECEIPT_NO}</div>
+                <div class="text-[11px] text-slate-400">${row.TRANS_ID} (${row.MC_ID})</div>
+              </td>
+              <td class="py-3 px-3">
+                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800/50">${row.REVENUE_CODE}</span>
+              </td>
+              <td class="py-3 px-3 text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${row.ITEM_DESC}">
+                ${row.ITEM_DESC}
+              </td>
+              <td class="py-3 px-3 text-center whitespace-nowrap">
+                ${modeBadge}
+              </td>
+              <td class="py-3 px-3 text-right font-bold text-slate-900 dark:text-white font-mono">
+                RM ${Number(row.ITEM_AMOUNT).toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Pagination indicators
+      document.getElementById('paginationInfo').textContent = 
+        totalItems === 0 
+          ? 'Menunjukkan 0 rekod' 
+          : `Menunjukkan ${startIndex + 1} hingga ${endIndex} daripada ${totalItems.toLocaleString()} rekod`;
+
+      renderPaginationButtons(totalPages);
+    }
+
+    function renderPaginationButtons(totalPages) {
+      const container = document.getElementById('paginationControls');
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      // Prev Button
+      html += `
+        <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      // Page numbers (simple window)
+      for (let p = Math.max(1, currentPage - 2); p <= Math.min(totalPages, currentPage + 2); p++) {
+        const activeClass = p === currentPage 
+          ? 'bg-indigo-600 text-white font-bold' 
+          : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+        html += `
+          <button onclick="goToPage(${p})" class="w-7 h-7 text-xs rounded-lg ${activeClass} transition">
+            ${p}
+          </button>
+        `;
+      }
+
+      // Next Button
+      html += `
+        <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    // --- CSV EXPORT ---
+    function exportCurrentViewCSV() {
+      if (filteredTransactions.length === 0) {
+        showToast('Tiada data untuk dieksport!');
+        return;
+      }
+
+      const headers = ['MC_ID', 'TRANS_ID', 'DRM_RECEIPT_NO', 'PAYMENT_DATETIME', 'PAYMENT_MODE', 'REVENUE_CODE', 'ITEM_DESC', 'ITEM_AMOUNT'];
+      const rows = filteredTransactions.map(t => [
+        `"${t.MC_ID}"`,
+        `"${t.TRANS_ID}"`,
+        `"${t.DRM_RECEIPT_NO}"`,
+        `"${t.PAYMENT_DATETIME}"`,
+        `"${t.PAYMENT_MODE}"`,
+        `"${t.REVENUE_CODE}"`,
+        `"${(t.ITEM_DESC || '').replace(/"/g, '""')}"`,
+        t.ITEM_AMOUNT
+      ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `DBAYAR_KUTIPAN_EKSPORT_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast(`Berjaya mengeksport ${filteredTransactions.length} rekod CSV!`);
+    }
+
+    // --- FILE UPLOAD & PARSING (EXCEL & CSV) ---
+    function initDropzone() {
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+
+      dropZone.addEventListener('click', () => fileInput.click());
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-500/5');
+      });
+
+      ['dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, () => {
+          dropZone.classList.remove('border-indigo-500', 'bg-indigo-500/5');
+        });
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) {
+          processUploadedFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    function handleFileSelect(e) {
+      if (e.target.files.length) {
+        processUploadedFile(e.target.files[0]);
+      }
+    }
+
+    function processUploadedFile(file) {
+      const fileName = file.name.toLowerCase();
+      showToast(`Memproses fail: ${file.name}...`);
+
+      const reader = new FileReader();
+
+      if (fileName.endsWith('.csv')) {
+        reader.onload = function(e) {
+          parseCSVText(e.target.result);
+        };
+        reader.readAsText(file);
+      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        reader.onload = function(e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // Look for non-SUM sheets or the first sheet
+            let targetSheetName = workbook.SheetNames.find(n => !n.toUpperCase().includes('SUM')) || workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[targetSheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+            if (json.length > 0) {
+              normalizeAndLoadData(json);
+              toggleModal('importModal');
+              showToast(`Berjaya memuatkan ${json.length} rekod dari ${targetSheetName}!`);
+            } else {
+              showToast('Sheet kosong atau format tidak sah.');
+            }
+          } catch (err) {
+            console.error(err);
+            showToast('Ralat memproses fail Excel.');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        showToast('Format fail tidak disokong. Sila guna .xlsx, .xls atau .csv.');
+      }
+    }
+
+    function processPastedCSV() {
+      const val = document.getElementById('rawCsvInput').value.trim();
+      if (!val) {
+        showToast('Sila masukkan teks data CSV!');
+        return;
+      }
+      parseCSVText(val);
+      toggleModal('importModal');
+    }
+
+    function parseCSVText(csvString) {
+      Papa.parse(csvString, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          if (results.data && results.data.length > 0) {
+            normalizeAndLoadData(results.data);
+            showToast(`Berjaya memuatkan ${results.data.length} rekod CSV!`);
+          } else {
+            showToast('Tiada data sah dijumpai dalam teks CSV.');
+          }
+        },
+        error: function(err) {
+          console.error(err);
+          showToast('Ralat membaca teks CSV.');
+        }
+      });
+    }
+
+    // Map any custom column names to canonical DBayar model
+    function normalizeAndLoadData(dataArray) {
+      const cleanRecords = [];
+
+      dataArray.forEach((row, idx) => {
+        // Resolve field names flexibly
+        const getField = (keys) => {
+          for (let k of keys) {
+            const match = Object.keys(row).find(x => x.trim().toUpperCase() === k.toUpperCase());
+            if (match && row[match] !== undefined) return row[match];
+          }
+          return '';
+        };
+
+        const dtStr = getField(['PAYMENT_DATETIME', 'DATETIME', 'DATE', 'TARIKH']);
+        let dateObj = dtStr ? new Date(dtStr) : new Date(2024, 0, 1);
+        if (isNaN(dateObj.getTime())) {
+          dateObj = new Date(2024, 0, (idx % 28) + 1);
+        }
+
+        const amountRaw = getField(['ITEM_AMOUNT', 'AMOUNT', 'JUMLAH', 'TOTAL']);
+        const amount = parseFloat(String(amountRaw).replace(/[^0-9.-]+/g, '')) || 0;
+
+        const revCode = String(getField(['REVENUE_CODE', 'KOD_HASIL', 'CODE']) || '13001').trim();
+        const mode = String(getField(['PAYMENT_MODE', 'MODE', 'SALURAN']) || 'FPX').toUpperCase().includes('MIGS') ? 'MIGS' : 'FPX';
+        const desc = getField(['ITEM_DESC', 'KETERANGAN', 'DESC']) || 'Terimaan Pelbagai DBayar';
+        const receiptNo = getField(['DRM_RECEIPT_NO', 'RECEIPT_NO', 'NO_RESIT']) || ('DRM24' + String(idx + 1000));
+        const transId = getField(['TRANS_ID', 'TRANSACTION_ID', 'ID']) || ('TXN-2024-' + idx);
+        const mcId = getField(['MC_ID', 'MERCHANT_ID']) || 'MC001';
+
+        cleanRecords.push({
+          MC_ID: mcId,
+          TRANS_ID: transId,
+          DRM_RECEIPT_NO: receiptNo,
+          PAYMENT_DATETIME: dateObj.toISOString().slice(0, 19).replace('T', ' '),
+          PAYMENT_MODE: mode,
+          ITEM_AMOUNT: amount,
+          ITEM_DESC: desc,
+          REVENUE_CODE: revCode,
+          DATE_OBJ: dateObj
+        });
+      });
+
+      if (cleanRecords.length > 0) {
+        rawTransactions = cleanRecords;
+        populateRevenueFilterOptions();
+        applyFilters();
+      }
+    }
+
+    // --- MODAL & TOAST HELPERS ---
+    function toggleModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.toggle('hidden');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
