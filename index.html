@@ -72,7 +72,7 @@
   <!-- TOP NAVIGATION BAR -->
   <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-darkCard/80 glassmorphism transition-colors">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-      
+
       <!-- Brand & Title -->
       <div class="flex items-center gap-3">
         <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
@@ -83,7 +83,7 @@
             <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">DBayar Analytics</h1>
             <span id="liveStatusBadge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-              Multi-Sheet 2024
+              Auto-Sync Aktif
             </span>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Konsolidasi 11 Sheet Terimaan & Kutipan DBayar</p>
@@ -92,10 +92,10 @@
 
       <!-- Action Tools -->
       <div class="flex items-center gap-2 sm:gap-3">
-        <!-- Live Google Sheets Sync Button -->
-        <button id="syncGoogleSheetsBtn" onclick="syncAllGoogleSheets()" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/50 transition-all shadow-sm">
+        <!-- Live Google Sheets Sync Button with Auto-Sync countdown -->
+        <button id="syncGoogleSheetsBtn" onclick="manualSync()" class="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/50 transition-all shadow-sm">
           <i data-lucide="refresh-cw" id="syncIcon" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Segerak G-Sheets</span>
+          <span class="hidden sm:inline">Segerak (<span id="syncCountdown">60s</span>)</span>
         </button>
 
         <!-- Import Data Button -->
@@ -120,7 +120,6 @@
     <!-- HORIZONTAL SHEET NAVIGATION TAB BAR -->
     <div class="border-t border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/60 px-4 sm:px-8 overflow-x-auto scrollbar-none">
       <div id="sheetTabsContainer" class="flex items-center space-x-1 py-2 text-xs font-semibold whitespace-nowrap min-w-max">
-        <!-- Rendered dynamically via renderSheetTabs() -->
       </div>
     </div>
   </header>
@@ -131,7 +130,7 @@
     <!-- FILTERS TOOLBAR -->
     <section class="p-4 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all">
       <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-        
+
         <!-- Filter dropdowns -->
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1">
           <!-- Active Sheet / Kategori Dropdown -->
@@ -209,7 +208,7 @@
 
     <!-- EXECUTIVE KPI CARDS -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      
+
       <!-- KPI 1: Jumlah Kutipan -->
       <div class="p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800/90 shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition">
         <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
@@ -286,7 +285,7 @@
 
     <!-- CHARTS SECTION - ROW 1 -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
+
       <!-- Trend Bulanan (2 Cols) -->
       <div class="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
         <div class="flex items-center justify-between mb-4">
@@ -498,13 +497,20 @@
     let sortColumn = 'PAYMENT_DATETIME';
     let sortDirection = 'desc';
 
+    // Auto-sync intervals & counters
+    const AUTO_SYNC_INTERVAL_SEC = 60;
+    let remainingSeconds = AUTO_SYNC_INTERVAL_SEC;
+    let autoSyncTimer = null;
+    let countdownTimer = null;
+    let isSyncing = false;
+
     // Chart instances
     let trendChartInstance = null;
     let paymentChartInstance = null;
     let sheetCategoryChartInstance = null;
     let hourlyChartInstance = null;
 
-    // --- REALISTIC 2024 DATA GENERATOR (INSTANT FALLBACK) ---
+    // --- REALISTIC 2024 DATA GENERATOR (FALLBACK) ---
     const SHEET_META = {
       'Taksiran': { code: '01001', desc: 'Cukai Taksiran Am', count: 320, min: 180, max: 2400 },
       'Perbadanan Pengurusan': { code: '13005', desc: 'Caj Pengurusan Bangunan Strata', count: 120, min: 120, max: 950 },
@@ -528,7 +534,7 @@
 
         for (let i = 0; i < meta.count; i++) {
           runningTransId += Math.floor(Math.random() * 4) + 1;
-          
+
           let month;
           if (sheetName === 'Taksiran') {
             const r = Math.random();
@@ -577,7 +583,40 @@
       loadInitialMultiSheetData();
       renderSheetTabs();
       populateSheetFilterDropdown();
+
+      // Cuba sync awal dari Google Sheets, kemudian mulakan jadual berkala
+      syncAllGoogleSheets(false).then(() => {
+        startAutoSyncSchedule();
+      });
     };
+
+    function startAutoSyncSchedule() {
+      remainingSeconds = AUTO_SYNC_INTERVAL_SEC;
+      updateCountdownDisplay();
+
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        if (!isSyncing) {
+          remainingSeconds--;
+          if (remainingSeconds <= 0) {
+            remainingSeconds = AUTO_SYNC_INTERVAL_SEC;
+            syncAllGoogleSheets(true); // Silent sync di background
+          }
+          updateCountdownDisplay();
+        }
+      }, 1000);
+    }
+
+    function updateCountdownDisplay() {
+      const el = document.getElementById('syncCountdown');
+      if (el) el.textContent = `${remainingSeconds}s`;
+    }
+
+    function manualSync() {
+      remainingSeconds = AUTO_SYNC_INTERVAL_SEC;
+      updateCountdownDisplay();
+      syncAllGoogleSheets(false);
+    }
 
     function loadInitialMultiSheetData() {
       rawTransactions = generateFullMultiSheet2024Dataset();
@@ -588,7 +627,7 @@
     function reloadSampleDataset() {
       loadInitialMultiSheetData();
       toggleModal('importModal');
-      showToast('Data asal 2024 berjaya dimuatkan semula');
+      showToast('Data simulasi asal dimuatkan semula');
     }
 
     // --- MULTI-SHEET TABS & NAVIGATION ---
@@ -641,60 +680,89 @@
       applyFilters();
     }
 
-    // --- LIVE GOOGLE SHEETS SYNC ENGINE ---
-    async function syncAllGoogleSheets() {
+    // --- LIVE GOOGLE SHEETS SYNC ENGINE (DIPERKUKUH) ---
+    async function syncAllGoogleSheets(isSilent = false) {
+      if (isSyncing) return;
+      isSyncing = true;
+
       const syncIcon = document.getElementById('syncIcon');
       const syncBtn = document.getElementById('syncGoogleSheetsBtn');
       const badge = document.getElementById('liveStatusBadge');
-      
+
       syncIcon.classList.add('animate-spin');
       syncBtn.disabled = true;
-      showToast('Menghubungi Google Sheets secara langsung...');
 
-      let fetchedCount = 0;
+      if (!isSilent) {
+        showToast('Menyegerak 11 helaian Google Sheets...');
+      }
+
       const combinedRecords = [];
+      const failedSheets = [];
 
       try {
         const fetchPromises = WORKSHEET_NAMES.map(async (sheetName) => {
-          const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+          const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName.trim())}&headers=1`;
           try {
             const resp = await fetch(url);
-            if (!resp.ok) return null;
+            if (!resp.ok) {
+              failedSheets.push(`${sheetName} (HTTP ${resp.status})`);
+              return null;
+            }
             const csvText = await resp.text();
+            
+            // Semak sekiranya Google mengembalikan halaman login HTML
+            if (csvText.trim().startsWith('<!DOCTYPE') || csvText.includes('<html')) {
+              failedSheets.push(`${sheetName} (Perlu Akses Awam)`);
+              return null;
+            }
+
             return { sheetName, csvText };
           } catch (e) {
+            failedSheets.push(`${sheetName} (CORS/Rangkaian)`);
             return null;
           }
         });
 
         const results = await Promise.all(fetchPromises);
-        
+
         results.forEach(res => {
           if (res && res.csvText) {
-            const parsed = Papa.parse(res.csvText, { header: true, skipEmptyLines: true });
+            const parsed = Papa.parse(res.csvText, { header: true, skipEmptyLines: 'greedy' });
             if (parsed.data && parsed.data.length > 0) {
               parsed.data.forEach((row, i) => {
                 const norm = normalizeSingleRow(row, i, res.sheetName);
-                if (norm) combinedRecords.push(norm);
+                if (norm && norm.ITEM_AMOUNT > 0) combinedRecords.push(norm);
               });
-              fetchedCount++;
             }
           }
         });
 
         if (combinedRecords.length > 0) {
           rawTransactions = combinedRecords;
-          badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+          badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
           badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-ping"></span> Live Synced (${combinedRecords.length} rekod)`;
-          showToast(`Berjaya menyegerak ${combinedRecords.length} transaksi dari Google Sheets!`);
+          
+          if (!isSilent) {
+            if (failedSheets.length > 0) {
+              showToast(`Disegerakkan sebahagian (${failedSheets.length} tab gagal).`);
+            } else {
+              showToast(`Penyegerakan selesai! ${combinedRecords.length} rekod dikemas kini.`);
+            }
+          }
         } else {
-          showToast('Nota: Google Sheets memerlukan kebenaran awam (Share to Anyone). Data simulasi kekal aktif.');
+          if (!isSilent) {
+            showToast('G-Sheets memerlukan mod "Anyone with the link can view". Data simulasi kekal aktif.');
+          }
         }
       } catch (err) {
-        showToast('G-Sheets disekat CORS oleh penyemak imbas. Sila guna fungsi Muat Naik Fail.');
+        console.error('Ralat penyegerakan:', err);
+        if (!isSilent) {
+          showToast('Ralat sambungan ke Google Sheets.');
+        }
       } finally {
         syncIcon.classList.remove('animate-spin');
         syncBtn.disabled = false;
+        isSyncing = false;
         populateRevenueFilterOptions();
         applyFilters();
       }
@@ -704,23 +772,23 @@
       const getField = (keys) => {
         for (let k of keys) {
           const match = Object.keys(row).find(x => x.trim().toUpperCase() === k.toUpperCase());
-          if (match && row[match] !== undefined) return row[match];
+          if (match && row[match] !== undefined && String(row[match]).trim() !== '') return row[match];
         }
         return '';
       };
 
-      const dtStr = getField(['PAYMENT_DATETIME', 'DATETIME', 'DATE', 'TARIKH']);
+      const dtStr = getField(['PAYMENT_DATETIME', 'DATETIME', 'DATE', 'TARIKH', 'TARIKH_BAYARAN', 'CREATED_AT']);
       let dateObj = dtStr ? new Date(dtStr) : new Date(2024, 0, (idx % 28) + 1);
       if (isNaN(dateObj.getTime())) dateObj = new Date(2024, 0, (idx % 28) + 1);
 
-      const amountRaw = getField(['ITEM_AMOUNT', 'AMOUNT', 'JUMLAH', 'TOTAL', '64,800']);
+      const amountRaw = getField(['ITEM_AMOUNT', 'AMOUNT', 'JUMLAH', 'TOTAL', 'BAYARAN']);
       const amount = parseFloat(String(amountRaw).replace(/[^0-9.-]+/g, '')) || 0;
-      const revCode = String(getField(['REVENUE_CODE', 'KOD_HASIL', '01001', 'CODE']) || '01001').trim();
-      const mode = String(getField(['PAYMENT_MODE', 'MODE', 'fpx']) || 'FPX').toUpperCase().includes('MIGS') ? 'MIGS' : 'FPX';
-      const desc = getField(['ITEM_DESC', 'KETERANGAN', 'Taksiran', 'DESC']) || defaultSheet;
-      const receiptNo = getField(['DRM_RECEIPT_NO', 'RECEIPT_NO', 'NO_RESIT']) || ('DRM24' + String(idx + 1000));
-      const transId = getField(['TRANS_ID', 'TRANSACTION_ID']) || ('TXN-' + idx);
-      const mcId = getField(['MC_ID', 'MERCHANT_ID']) || 'MC001';
+      const revCode = String(getField(['REVENUE_CODE', 'KOD_HASIL', 'KOD', 'CODE']) || '01001').trim();
+      const mode = String(getField(['PAYMENT_MODE', 'MODE', 'KAEDAH', 'JENIS_BAYARAN']) || 'FPX').toUpperCase().includes('MIGS') ? 'MIGS' : 'FPX';
+      const desc = getField(['ITEM_DESC', 'KETERANGAN', 'PERIHAL', 'DESC']) || defaultSheet;
+      const receiptNo = getField(['DRM_RECEIPT_NO', 'RECEIPT_NO', 'NO_RESIT', 'RESIT']) || ('DRM24' + String(idx + 1000));
+      const transId = getField(['TRANS_ID', 'TRANSACTION_ID', 'NO_TRANSAKSI']) || ('TXN-' + idx);
+      const mcId = getField(['MC_ID', 'MERCHANT_ID', 'ID_PENIAGA']) || 'MC001';
 
       return {
         SHEET_NAME: defaultSheet,
@@ -740,7 +808,7 @@
     function populateRevenueFilterOptions() {
       const select = document.getElementById('filterRevenueCode');
       const uniqueCodes = [...new Set(rawTransactions.map(t => t.REVENUE_CODE))].sort();
-      
+
       select.innerHTML = '<option value="ALL">Semua Kod Hasil</option>';
       uniqueCodes.forEach(code => {
         const sample = rawTransactions.find(t => t.REVENUE_CODE === code);
@@ -1341,7 +1409,7 @@
               const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
               json.forEach((row, idx) => {
                 const norm = normalizeSingleRow(row, idx, sheetName);
-                if (norm) allUploadedRecords.push(norm);
+                if (norm && norm.ITEM_AMOUNT > 0) allUploadedRecords.push(norm);
               });
             });
 
@@ -1350,9 +1418,9 @@
               populateRevenueFilterOptions();
               applyFilters();
               toggleModal('importModal');
-              showToast(`Berjaya memuatkan ${allUploadedRecords.length} transaksi daripada ${workbook.SheetNames.length - 1} sheet!`);
+              showToast(`Berjaya memuatkan ${allUploadedRecords.length} transaksi daripada fail Excel!`);
             } else {
-              showToast('Tiada rekod ditemui dalam fail.');
+              showToast('Tiada rekod sah ditemui dalam fail.');
             }
           } catch (err) {
             showToast('Ralat memproses fail Excel.');
@@ -1388,7 +1456,7 @@
             const parsedRows = [];
             results.data.forEach((row, i) => {
               const norm = normalizeSingleRow(row, i, selectedSheetFilter !== 'ALL' ? selectedSheetFilter : 'Taksiran');
-              if (norm) parsedRows.push(norm);
+              if (norm && norm.ITEM_AMOUNT > 0) parsedRows.push(norm);
             });
             rawTransactions = parsedRows;
             populateRevenueFilterOptions();
